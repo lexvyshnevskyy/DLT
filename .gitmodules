@@ -1,0 +1,4 @@
+[submodule "src/hmi"]
+	path = src/hmi
+	url = git@github.com:lexvyshnevskyy/DLT_hmi.git
+	branch = main
