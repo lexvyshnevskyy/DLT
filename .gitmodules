@@ -2,3 +2,13 @@
 	path = src/hmi
 	url = git@github.com:lexvyshnevskyy/DLT_hmi.git
 	branch = main
+
+[submodule "src/database"]
+	path = src/database
+	url = git@github.com:lexvyshnevskyy/DLT_ads1256.git
+	branch = main
+
+[submodule "src/measure_device"]
+	path = src/measure_device
+	url = git@github.com:lexvyshnevskyy/DLT_measure_device.git
+	branch = main
