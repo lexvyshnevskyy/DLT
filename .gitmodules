@@ -23,3 +23,7 @@
 	url = git@github.com:lexvyshnevskyy/DLT_core.git
 	branch = main
 
+[submodule "src/ltm2985"]
+	path = src/ltm2985_uart
+	url = git@github.com:lexvyshnevskyy/DLT_ltm2985.git
+	branch = main
