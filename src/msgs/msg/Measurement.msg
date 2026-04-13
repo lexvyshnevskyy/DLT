@@ -1,0 +1,10 @@
+builtin_interfaces/Time stamp
+string source
+uint8 channel
+string type
+float32 value
+int32 raw_code
+float32 sensor_value
+uint32 fault
+bool valid
+string raw_json
