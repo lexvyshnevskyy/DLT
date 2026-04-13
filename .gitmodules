@@ -13,4 +13,13 @@
 	url = git@github.com:lexvyshnevskyy/DLT_measure_device.git
 	branch = main
 
+[submodule "src/database"]
+	path = src/database
+	url = git@github.com:lexvyshnevskyy/DLT_database.git
+	branch = main
+
+[submodule "src/core"]
+	path = src/core
+	url = git@github.com:lexvyshnevskyy/DLT_core.git
+	branch = main
 
