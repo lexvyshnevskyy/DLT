@@ -27,3 +27,8 @@
 	path = src/ltm2985_uart
 	url = git@github.com:lexvyshnevskyy/DLT_ltm2985.git
 	branch = main
+
+[submodule "src/webui"]
+	path = src/webui
+	url = git@github.com:lexvyshnevskyy/DLT_webui.git
+	branch = main
