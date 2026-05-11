@@ -7,27 +7,18 @@ source "${SCRIPT_DIR}/common.sh"
 require_not_root
 ROS_DISTRO="$(resolve_ros_distro)"
 WORKSPACE="$(workspace_root)"
-REMOTE_REPO="$(current_remote_repo)"
 
 log "Workspace: ${WORKSPACE}"
-log "Remote repo: ${REMOTE_REPO}"
 log "ROS distro: ${ROS_DISTRO}"
 
 ensure_ssh_agent
-clone_or_update_workspace "${WORKSPACE}" "${REMOTE_REPO}"
 update_nested_git_repos "${WORKSPACE}"
-
 source_ros "${ROS_DISTRO}"
-ensure_rosdep_initialized
-run_rosdep_install "${WORKSPACE}" "${ROS_DISTRO}"
 install_python_requirements "${WORKSPACE}"
 build_workspace "${WORKSPACE}" "${ROS_DISTRO}"
-
 write_env_file "${WORKSPACE}" "${ROS_DISTRO}" "${USER}"
-configure_mysql
 install_service_units "${WORKSPACE}" "${USER}"
-enable_services_from_env
+sudo systemctl daemon-reload
 restart_services_from_env
 
-log "Setup complete."
-log "Check services with: systemctl --no-pager --full status dlt-database dlt-core dlt-ltm2985 dlt-webui"
+log "Update, rebuild, and service restart finished."
