@@ -1,13 +1,13 @@
 std_msgs/Header header
 
-int32 AIN0
-int32 AIN1
-int32 AIN2
-int32 AIN3
-int32 AIN4
-int32 AIN5
-int32 AIN6
-int32 AIN7
+int32 ain0
+int32 ain1
+int32 ain2
+int32 ain3
+int32 ain4
+int32 ain5
+int32 ain6
+int32 ain7
 
 std_msgs/Float32 ch0
 std_msgs/Float32 ch1
