@@ -3,8 +3,8 @@
 	url = git@github.com:lexvyshnevskyy/DLT_hmi.git
 	branch = main
 
-[submodule "src/database"]
-	path = src/database
+[submodule "src/ads1256"]
+	path = src/ads1256
 	url = git@github.com:lexvyshnevskyy/DLT_ads1256.git
 	branch = main
 
