@@ -86,6 +86,11 @@ case "$NODE" in
     ;;
 
   ads1256)
+    : "${DELATOMETRY_ADS1256_ENABLED:=false}"
+    if [ "$(echo "$DELATOMETRY_ADS1256_ENABLED" | tr '[:upper:]' '[:lower:]')" != "true" ]; then
+      echo "ADS1256 node disabled (DELATOMETRY_ADS1256_ENABLED=false). Exiting."
+      exit 0
+    fi
     : "${DELATOMETRY_ADS1256_SIMULATE:=false}"
     : "${DELATOMETRY_ADS1256_FALLBACK_TO_SIMULATION:=true}"
     exec ros2 launch ads1256 ads1256.launch.py \
@@ -98,13 +103,17 @@ case "$NODE" in
     : "${DELATOMETRY_CORE_MEASUREMENT_TOPIC:=/ltm2985/measurement}"
     : "${DELATOMETRY_CORE_ENABLE_DATABASE_CLIENT:=false}"
     : "${DELATOMETRY_CORE_ENABLE_PWM_CONTROLLER:=false}"
+    : "${DELATOMETRY_CORE_PWM_PIN_CH1:=${DELATOMETRY_CORE_PWM_PIN:-18}}"
+    : "${DELATOMETRY_CORE_PWM_PIN_CH2:=19}"
     params="$DELATOMETRY_WORKSPACE/install/core/share/core/config/core.params.yaml"
     exec ros2 run core run.py --ros-args \
       -r "__ns:=/$DELATOMETRY_CORE_NAMESPACE" \
       --params-file "$params" \
       -p "measurement_topic:=$DELATOMETRY_CORE_MEASUREMENT_TOPIC" \
       -p "enable_database_client:=$DELATOMETRY_CORE_ENABLE_DATABASE_CLIENT" \
-      -p "enable_pwm_controller:=$DELATOMETRY_CORE_ENABLE_PWM_CONTROLLER"
+      -p "enable_pwm_controller:=$DELATOMETRY_CORE_ENABLE_PWM_CONTROLLER" \
+      -p "pwm_pin:=$DELATOMETRY_CORE_PWM_PIN_CH1" \
+      -p "pwm_pin_ch2:=$DELATOMETRY_CORE_PWM_PIN_CH2"
     ;;
 
   hmi)

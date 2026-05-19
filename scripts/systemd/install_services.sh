@@ -59,8 +59,8 @@ DELATOMETRY_LTM2985_BAUDRATE="230400"
 DELATOMETRY_MEASURE_PORT="/dev/ttyUSB0"
 DELATOMETRY_MEASURE_SPEED="9600"
 
-# ADS1256
-# Set true to test full system without ADC hardware.
+# ADS1256 (disabled by default — enable in webui Configuration when hardware is present)
+DELATOMETRY_ADS1256_ENABLED="false"
 DELATOMETRY_ADS1256_SIMULATE="false"
 DELATOMETRY_ADS1256_FALLBACK_TO_SIMULATION="true"
 
@@ -68,8 +68,9 @@ DELATOMETRY_ADS1256_FALLBACK_TO_SIMULATION="true"
 DELATOMETRY_CORE_NAMESPACE="core"
 DELATOMETRY_CORE_MEASUREMENT_TOPIC="/ltm2985/measurement"
 DELATOMETRY_CORE_ENABLE_DATABASE_CLIENT="false"
-# Set true on hardware with pigpio for heater control from core/webui.
 DELATOMETRY_CORE_ENABLE_PWM_CONTROLLER="false"
+DELATOMETRY_CORE_PWM_PIN_CH1="18"
+DELATOMETRY_CORE_PWM_PIN_CH2="19"
 
 # HMI serial display
 DELATOMETRY_HMI_PORT="/dev/ttyS0"
@@ -151,8 +152,8 @@ write_unit "delatometry-core" \
 write_unit "delatometry-hmi" \
   "Delatometry HMI ROS 2 node" \
   "hmi" \
-  "delatometry-database.service delatometry-ads1256.service delatometry-measure-device.service" \
-  "delatometry-ads1256.service delatometry-measure-device.service" \
+  "delatometry-database.service delatometry-measure-device.service" \
+  "delatometry-measure-device.service" \
   "delatometry-database.service"
 
 write_unit "delatometry-webui" \
@@ -182,7 +183,18 @@ fi
 if [ "$START_SERVICES" = "1" ]; then
   echo "[services] starting services in dependency order"
   for svc in "${services[@]}"; do
-    sudo systemctl restart "$svc" || true
+    if [ "$svc" = "delatometry-ads1256.service" ]; then
+      if grep -q '^DELATOMETRY_ADS1256_ENABLED="true"' "$ENV_FILE" 2>/dev/null; then
+        sudo systemctl enable "$svc" 2>/dev/null || true
+        sudo systemctl restart "$svc" || true
+      else
+        sudo systemctl disable "$svc" 2>/dev/null || true
+        sudo systemctl stop "$svc" 2>/dev/null || true
+        echo "[services] skipped $svc (DELATOMETRY_ADS1256_ENABLED=false)"
+      fi
+    else
+      sudo systemctl restart "$svc" || true
+    fi
     sleep 1
   done
 fi
