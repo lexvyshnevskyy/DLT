@@ -37,6 +37,24 @@ This is repository for Delatometry project.
     - user-data : script for default boot parameters like user-name...
 
 ## Deploy and run
+
+### One-shot install (recommended)
+
+```shell
+cd /path/to/ros2_delatometry
+bash scripts/install.sh
+```
+
+Interactive menu: full install from scratch, or rebuild all packages and restart services.
+
+Requires **ROS 2 Jazzy** already installed (`/opt/ros/jazzy/setup.bash`). Non-interactive:
+
+```shell
+INSTALL_MODE=scratch bash scripts/install.sh
+INSTALL_MODE=rebuild bash scripts/install.sh
+```
+
+### Legacy deploy
 ### Download HMI and Source repos by running command
 ```shell
 ./deploy.sh

@@ -1,10 +1,9 @@
-* install.sh
-  * installs ROS 2 minimal (ros-base)
-  * installs MySQL server/client
-  * installs pigpio and Python/system dependencies
-  * initializes rosdep
-  * creates /etc/delatometry/delatometry.env
-  * creates MySQL DB/user automatically
+* **scripts/install.sh** (project root installer)
+  * interactive **whiptail** menu:
+    * **Full install from scratch** — apt deps, MariaDB, venv, all pip requirements, rosdep, colcon build all nodes, systemd, webui sudoers
+    * **Rebuild packages** — rebuild all nodes, refresh services, restart
+  * non-interactive: `INSTALL_MODE=scratch` or `INSTALL_MODE=rebuild`
+  * covers packages: msgs, database, core, ltm2985_uart, measure_device, ads1256, hmi, webui
 * setup_dlt.sh
   * updates main repo
   * updates nested git repos/submodules
