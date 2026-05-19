@@ -156,12 +156,14 @@ write_unit "delatometry-hmi" \
   "delatometry-measure-device.service" \
   "delatometry-database.service"
 
+# WebUI must not Require database/core — stopping those services from the UI
+# would otherwise stop this unit too and kill the browser session.
 write_unit "delatometry-webui" \
   "Delatometry WebUI ROS 2 node" \
   "webui" \
   "delatometry-database.service delatometry-core.service" \
-  "" \
-  "delatometry-database.service delatometry-core.service"
+  "delatometry-database.service delatometry-core.service" \
+  ""
 
 sudo systemctl daemon-reload
 
