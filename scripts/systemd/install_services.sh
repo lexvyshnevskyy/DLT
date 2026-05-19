@@ -68,6 +68,7 @@ DELATOMETRY_ADS1256_FALLBACK_TO_SIMULATION="true"
 DELATOMETRY_CORE_NAMESPACE="core"
 DELATOMETRY_CORE_MEASUREMENT_TOPIC="/ltm2985/measurement"
 DELATOMETRY_CORE_ENABLE_DATABASE_CLIENT="false"
+# Set true on hardware with pigpio for heater control from core/webui.
 DELATOMETRY_CORE_ENABLE_PWM_CONTROLLER="false"
 
 # HMI serial display

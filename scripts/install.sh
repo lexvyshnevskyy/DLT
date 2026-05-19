@@ -144,6 +144,7 @@ ros2 pkg executables measure_device || true
 ros2 pkg executables ads1256 || true
 ros2 pkg executables hmi || true
 ros2 pkg executables webui || true
+ros2 pkg executables measure_device || true
 
 echo "[install] verify Python imports"
 python3 -c "import rclpy; print('rclpy OK')"

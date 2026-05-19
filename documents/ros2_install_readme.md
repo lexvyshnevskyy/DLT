@@ -19,3 +19,10 @@
   * rebuilds
   * reinstalls service units
   * restarts enabled services
+
+## Web UI
+
+* Package: `src/webui` — Gradio interface on port 7860 (`ros2 launch webui webui.launch.py`)
+* Requires: `pip install -r src/webui/requirements.txt` (gradio, psutil)
+* Optional sudoers for service control and Wi-Fi: `sudo bash src/webui/scripts/install_sudoers.sh`
+* Enable heater control: `DELATOMETRY_CORE_ENABLE_PWM_CONTROLLER=true` in `/etc/default/delatometry`
