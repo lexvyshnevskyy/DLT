@@ -313,7 +313,7 @@ print_summary() {
   echo "=============================================="
   echo " Workspace:  $WORKSPACE"
   echo " Config:     /etc/default/delatometry"
-  echo " Web UI:     http://$(hostname -I 2>/dev/null | awk '{print $1}'):7860/"
+  echo " Web UI:     http://$(hostname -I 2>/dev/null | awk '{print $1}')/"
   echo " Status:     $WORKSPACE/scripts/systemd/status.sh"
   echo " Logs:       $WORKSPACE/scripts/systemd/logs.sh all"
   echo
@@ -350,7 +350,7 @@ main() {
   print_summary
 
   if [ -t 0 ] && command -v whiptail >/dev/null 2>&1; then
-    whiptail --title "Done" --msgbox "Install completed successfully.\n\nWeb UI: http://<device-ip>:7860/\n\nUse scripts/systemd/status.sh to check services." 12 60 || true
+    whiptail --title "Done" --msgbox "Install completed successfully.\n\nWeb UI: http://<device-ip>/\n\nUse scripts/systemd/status.sh to check services." 12 60 || true
   fi
 }
 

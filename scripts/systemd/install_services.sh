@@ -88,6 +88,11 @@ write_unit() {
   local after="$4"
   local wants="$5"
   local requires="$6"
+  local extra_service=""
+
+  if [ "$node_name" = "webui" ]; then
+    extra_service=$'AmbientCapabilities=CAP_NET_BIND_SERVICE\n'
+  fi
 
   sudo tee "/etc/systemd/system/${service_name}.service" >/dev/null <<EOF
 [Unit]
@@ -108,7 +113,7 @@ RestartSec=3
 KillSignal=SIGINT
 TimeoutStopSec=15
 Environment=PYTHONUNBUFFERED=1
-
+${extra_service}
 [Install]
 WantedBy=multi-user.target
 EOF
