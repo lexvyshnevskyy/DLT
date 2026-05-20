@@ -1,0 +1,14 @@
+[Unit]
+Description=Delatometry personal hotspot DHCP (dnsmasq)
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/delatometry/hotspot-dnsmasq.conf
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/dnsmasq --keep-in-foreground --conf-file=/etc/delatometry/hotspot-dnsmasq.conf
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
