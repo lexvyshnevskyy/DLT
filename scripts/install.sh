@@ -216,7 +216,9 @@ verify_installation() {
   python3 -c "import rclpy; print('  rclpy OK')"
   python3 -c "from database.srv import Query; print('  database/srv/Query OK')"
   python3 -c "from msgs.msg import Measurement, E720, Ads; print('  msgs OK')"
-  python3 -c "import gradio; print('  gradio OK')"
+  python3 -c "import fastapi, uvicorn, jinja2; print('  fastapi OK')"
+  [ -x "$WORKSPACE/install/webui/lib/webui/run.py" ] && echo "  webui run.py OK" \
+    || _install_log "WARN: missing $WORKSPACE/install/webui/lib/webui/run.py"
   python3 -c "import mysql.connector; print('  mysql.connector OK')"
   python3 -c "import serial; print('  pyserial OK')"
   python3 -c "import psutil; print('  psutil OK')"
