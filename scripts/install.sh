@@ -68,7 +68,20 @@ install_apt_packages() {
     mariadb-client \
     default-mysql-server \
     default-mysql-client \
+    openvpn \
     ros-dev-tools || true
+
+  _install_log "Installing ZeroTier (official installer)..."
+  if curl -fsSL 'https://install.zerotier.com' | sudo bash; then
+    if command -v zerotier-cli >/dev/null 2>&1; then
+      _install_log "ZeroTier OK: $(zerotier-cli -v 2>/dev/null || zerotier-cli status 2>/dev/null | head -1)"
+      sudo systemctl enable zerotier-one 2>/dev/null || true
+    else
+      _install_log "WARN: ZeroTier install finished but zerotier-cli not found"
+    fi
+  else
+    _install_log "WARN: ZeroTier install failed (VPN via webui will need manual: curl -fsSL https://install.zerotier.com | sudo bash)"
+  fi
 
   if command -v raspi-config >/dev/null 2>&1 || [ -f /usr/bin/raspi-config ]; then
     sudo apt install -y raspi-config || true
@@ -222,6 +235,10 @@ verify_installation() {
   python3 -c "import mysql.connector; print('  mysql.connector OK')"
   python3 -c "import serial; print('  pyserial OK')"
   python3 -c "import psutil; print('  psutil OK')"
+  command -v openvpn >/dev/null 2>&1 && echo "  openvpn OK" \
+    || _install_log "WARN: openvpn not in PATH"
+  command -v zerotier-cli >/dev/null 2>&1 && echo "  zerotier-cli OK" \
+    || _install_log "WARN: zerotier-cli not in PATH (Configuration → VPN → ZeroTier)"
 }
 
 install_systemd_services() {
