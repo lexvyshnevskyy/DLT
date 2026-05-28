@@ -61,6 +61,7 @@ install_apt_packages() {
     python3-rosdep \
     python3-serial \
     python3-psutil \
+    python3-matplotlib \
     python3-pigpio \
     python3-spidev \
     pigpio \
@@ -179,7 +180,7 @@ install_pip_requirements() {
     python3 -m pip install -r "$req"
   done < <(find "$WORKSPACE/src" -name requirements.txt -type f 2>/dev/null | sort -u)
 
-  python3 -m pip install spidev pigpio pipyadc 2>/dev/null || true
+  python3 -m pip install spidev pigpio pipyadc matplotlib 2>/dev/null || true
 }
 
 set_executable_bits() {
@@ -235,6 +236,7 @@ verify_installation() {
   python3 -c "import mysql.connector; print('  mysql.connector OK')"
   python3 -c "import serial; print('  pyserial OK')"
   python3 -c "import psutil; print('  psutil OK')"
+  python3 -c "import matplotlib; matplotlib.use('Agg'); print('  matplotlib OK')"
   command -v openvpn >/dev/null 2>&1 && echo "  openvpn OK" \
     || _install_log "WARN: openvpn not in PATH"
   command -v zerotier-cli >/dev/null 2>&1 && echo "  zerotier-cli OK" \
