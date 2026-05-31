@@ -61,6 +61,7 @@ install_apt_packages() {
     python3-rosdep \
     python3-serial \
     python3-psutil \
+    python3-matplotlib \
     python3-pigpio \
     python3-spidev \
     pigpio \
@@ -68,7 +69,20 @@ install_apt_packages() {
     mariadb-client \
     default-mysql-server \
     default-mysql-client \
+    openvpn \
     ros-dev-tools || true
+
+  _install_log "Installing ZeroTier (official installer)..."
+  if curl -fsSL 'https://install.zerotier.com' | sudo bash; then
+    if command -v zerotier-cli >/dev/null 2>&1; then
+      _install_log "ZeroTier OK: $(zerotier-cli -v 2>/dev/null || zerotier-cli status 2>/dev/null | head -1)"
+      sudo systemctl enable zerotier-one 2>/dev/null || true
+    else
+      _install_log "WARN: ZeroTier install finished but zerotier-cli not found"
+    fi
+  else
+    _install_log "WARN: ZeroTier install failed (VPN via webui will need manual: curl -fsSL https://install.zerotier.com | sudo bash)"
+  fi
 
   if command -v raspi-config >/dev/null 2>&1 || [ -f /usr/bin/raspi-config ]; then
     sudo apt install -y raspi-config || true
@@ -166,7 +180,7 @@ install_pip_requirements() {
     python3 -m pip install -r "$req"
   done < <(find "$WORKSPACE/src" -name requirements.txt -type f 2>/dev/null | sort -u)
 
-  python3 -m pip install spidev pigpio pipyadc 2>/dev/null || true
+  python3 -m pip install spidev pigpio pipyadc matplotlib 2>/dev/null || true
 }
 
 set_executable_bits() {
@@ -216,10 +230,17 @@ verify_installation() {
   python3 -c "import rclpy; print('  rclpy OK')"
   python3 -c "from database.srv import Query; print('  database/srv/Query OK')"
   python3 -c "from msgs.msg import Measurement, E720, Ads; print('  msgs OK')"
-  python3 -c "import gradio; print('  gradio OK')"
+  python3 -c "import fastapi, uvicorn, jinja2; print('  fastapi OK')"
+  [ -x "$WORKSPACE/install/webui/lib/webui/run.py" ] && echo "  webui run.py OK" \
+    || _install_log "WARN: missing $WORKSPACE/install/webui/lib/webui/run.py"
   python3 -c "import mysql.connector; print('  mysql.connector OK')"
   python3 -c "import serial; print('  pyserial OK')"
   python3 -c "import psutil; print('  psutil OK')"
+  python3 -c "import matplotlib; matplotlib.use('Agg'); print('  matplotlib OK')"
+  command -v openvpn >/dev/null 2>&1 && echo "  openvpn OK" \
+    || _install_log "WARN: openvpn not in PATH"
+  command -v zerotier-cli >/dev/null 2>&1 && echo "  zerotier-cli OK" \
+    || _install_log "WARN: zerotier-cli not in PATH (Configuration → VPN → ZeroTier)"
 }
 
 install_systemd_services() {

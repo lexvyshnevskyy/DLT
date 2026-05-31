@@ -112,6 +112,7 @@ DELATOMETRY_HMI_DATABASE_WAIT_TIMEOUT_SEC="$DELATOMETRY_HMI_DATABASE_WAIT_TIMEOU
 EOF
 
 chmod +x "$WORKSPACE/scripts/systemd/run_node.sh"
+chmod +x "$WORKSPACE/scripts/systemd/delatometry-vpn-connect.sh"
 
 write_unit() {
   local service_name="$1"
@@ -204,6 +205,25 @@ write_unit "delatometry-webui" \
 
 sudo install -m 0644 "$WORKSPACE/scripts/systemd/delatometry-hotspot-dnsmasq.service" \
   /etc/systemd/system/delatometry-hotspot-dnsmasq.service
+
+sudo tee /etc/systemd/system/delatometry-vpn.service >/dev/null <<EOF
+[Unit]
+Description=Delatometry VPN (OpenVPN or ZeroTier on boot)
+After=network-online.target
+Wants=network-online.target
+Before=delatometry-webui.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/default/delatometry
+ExecStart=$WORKSPACE/scripts/systemd/delatometry-vpn-connect.sh
+ExecStop=/bin/bash -c '/usr/bin/pkill -f openvpn.*client.ovpn 2>/dev/null || true; exit 0'
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 sudo systemctl daemon-reload
 
 services=(

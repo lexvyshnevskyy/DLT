@@ -1,0 +1,16 @@
+[Unit]
+Description=Delatometry VPN (OpenVPN or ZeroTier on boot)
+After=network-online.target
+Wants=network-online.target
+Before=delatometry-webui.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/default/delatometry
+# ExecStart path is set by scripts/systemd/install_services.sh to match DELATOMETRY_WORKSPACE
+ExecStart=/opt/delatometry/scripts/systemd/delatometry-vpn-connect.sh
+ExecStop=/bin/bash -c '/usr/bin/pkill -f openvpn.*client.ovpn 2>/dev/null || true; exit 0'
+
+[Install]
+WantedBy=multi-user.target
