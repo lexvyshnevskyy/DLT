@@ -51,10 +51,6 @@ scripts/systemd/logs.sh all
 sudo systemctl restart delatometry-core delatometry-webui
 ```
 
-## Legacy notes
-
-Older material under `documents/` (deploy, Docker, UART) is kept for reference; prefer **`docs/`** for current ROS 2 stack behavior.
-
 ## License
 
 See repository and submodule licenses per package.

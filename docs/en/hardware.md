@@ -27,7 +27,3 @@ Core optionally uses **pigpio** for PWM when `enable_pwm_controller:=true`. Manu
 ## Groups and permissions
 
 `scripts/install.sh` may add the service user to `gpio`, `dialout`, etc. UART nodes need read/write on `/dev/tty*`.
-
-## Legacy hardware notes
-
-Older markdown in `documents/Hardware.md` and `documents/UART.md` may still help for board-specific wiring; verify against current ROS 2 packages.

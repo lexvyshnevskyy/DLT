@@ -37,8 +37,7 @@ bash scripts/install.sh
 # Choose full install or rebuild; then open http://<device-ip>/
 ```
 
-Configuration: `/etc/default/delatometry`  
-Legacy notes: `documents/` (older deploy notes; prefer `docs/`).
+Configuration: `/etc/default/delatometry`
 
 ## Documentation languages
 

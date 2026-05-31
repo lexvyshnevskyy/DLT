@@ -37,8 +37,7 @@ bash scripts/install.sh
 # Повне встановлення або перезбірка; відкрийте http://<ip-пристрою>/
 ```
 
-Конфігурація: `/etc/default/delatometry`  
-Застарілі нотатки: `documents/` (краще використовувати `docs/`).
+Конфігурація: `/etc/default/delatometry`
 
 ## Мови документації
 

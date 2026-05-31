@@ -23,5 +23,3 @@ Core + pigpio при `enable_pwm_controller:=true`. Ручна ціль з `/exp
 ## Дозволи
 
 Користувач служби в групах `gpio`, `dialout` тощо; доступ до `/dev/tty*`.
-
-Застарілі схеми: `documents/Hardware.md`, `documents/UART.md` — перевіряйте актуальність пакетів ROS 2.
