@@ -1,0 +1,15 @@
+{
+  "pages": [
+    {"slug": "overview", "file": "overview.md", "title": {"en": "Overview", "uk": "Огляд"}},
+    {"slug": "architecture", "file": "architecture.md", "title": {"en": "Architecture", "uk": "Архітектура"}},
+    {"slug": "installation", "file": "installation.md", "title": {"en": "Installation", "uk": "Встановлення"}},
+    {"slug": "services", "file": "services.md", "title": {"en": "Systemd services", "uk": "Служби systemd"}},
+    {"slug": "core", "file": "core.md", "title": {"en": "Core node", "uk": "Вузол core"}},
+    {"slug": "database", "file": "database.md", "title": {"en": "Database", "uk": "База даних"}},
+    {"slug": "webui", "file": "webui.md", "title": {"en": "Web UI", "uk": "Веб-інтерфейс"}},
+    {"slug": "hmi", "file": "hmi.md", "title": {"en": "HMI (Nextion)", "uk": "HMI (Nextion)"}},
+    {"slug": "hardware", "file": "hardware.md", "title": {"en": "Hardware nodes", "uk": "Апаратні вузли"}},
+    {"slug": "troubleshooting", "file": "troubleshooting.md", "title": {"en": "Troubleshooting", "uk": "Усунення несправностей"}},
+    {"slug": "development", "file": "development.md", "title": {"en": "Development", "uk": "Розробка"}}
+  ]
+}

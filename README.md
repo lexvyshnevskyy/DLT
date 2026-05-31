@@ -1,66 +1,60 @@
-# TODO
-update Readme and documentation as for 01.01.2026 absolute
+# Delatometry (ROS 2)
 
+Temperature-programmed experiments on Linux / Raspberry Pi: **core** runs programs and PI control; **MariaDB** stores results; **web UI** and **Nextion HMI** operate the system.
 
-# README #
-This is repository for Delatometry project.
+## Quick start
 
-## Software requirements ##
-* Ubuntu/debian 22 
-* Ros2 (refer to documentation)
-
-## Project Structure ##
-* [README.md](README.md)
-* deploy.sh : run this script to prepare project tree
-* documentation
-    - [Deploy RPI/Ubuntu packages](/documents/UbuntuDeploy.md)
-    - [Hardware requirement](/documents/Hardware.md)
-    - [Docker structure and purpose](/documents/Docker.md)
-    - [Testing and examples](/documents/RosGames.md)
-* docker
-    - rpi
-        + arm64v8
-            * build.bash will build docker image named as "delatometr"
-            * run.bush run container in interactive mode. Contain of folder root/ros will be mount inside container like volume
-            * Dockerfile : descriptor of container
-* hmi : external repository for HMI interface. Check deploy.sh
-* ros  : external repository for HMI interface. Check deploy.sh
-* install_rpi :scripts for rpi software installation. Check documentation
-    - 999_decompress_rpi_kernel : require for ubuntu update. as kernel is compressed and loader require uncompressed image
-    - auto_decompress_kernel : first boot decompression script
-    - config.txt : board configuration with commands for raspbery pi4. refer to correspondent line if you plan to use different board
-    - install.sh : run this script to configure bord
-    - network-config : default wireless network hide inside this file
-    - rpi : ssh key for read only access to repo
-    - rpi.pub : ssh public readonly key
-    - shadow : preconfigured password storage. DO NOT EDIT
-    - user-data : script for default boot parameters like user-name...
-
-## Deploy and run
-
-### One-shot install (recommended)
-
-```shell
-cd /path/to/ros2_delatometry
+```bash
+cd ~/ros2_delatometry
 bash scripts/install.sh
 ```
 
-Interactive menu: full install from scratch, or rebuild all packages and restart services.
+Requires **ROS 2 Jazzy**. After install: `http://<device-ip>/`  
+Config: `/etc/default/delatometry`
 
-Requires **ROS 2 Jazzy** already installed (`/opt/ros/jazzy/setup.bash`). Non-interactive:
+Non-interactive install:
 
-```shell
+```bash
 INSTALL_MODE=scratch bash scripts/install.sh
 INSTALL_MODE=rebuild bash scripts/install.sh
 ```
 
-### Legacy deploy
-### Download HMI and Source repos by running command
-```shell
-./deploy.sh
+## Documentation
+
+| Language | Repository | Web UI (after `colcon build webui`) |
+|----------|------------|-------------------------------------|
+| English | [docs/en/](docs/en/) | [/docs/en](http://localhost/docs/en) |
+| Ukrainian | [docs/uk/](docs/uk/) | [/docs/uk](http://localhost/docs/uk) |
+
+Topics: overview, architecture, installation, systemd services, core, database, webui, HMI, hardware, troubleshooting, development.
+
+Open **Documentation** in the site header (locale picks `/docs/en` or `/docs/uk`).
+
+## Packages (`src/`)
+
+| Package | Role |
+|---------|------|
+| [core](src/core/) | Programs, PI/PWM, measurement logging |
+| [webui](src/webui/) | FastAPI browser HMI |
+| [database](src/database/) | MariaDB ROS node |
+| [hmi](src/hmi/) | Nextion serial display |
+| [ltm2985_uart](src/ltm2985_uart/) | LTM2985 driver |
+| [measure_device](src/measure_device/) | External measurements |
+| [ads1256](src/ads1256/) | Optional ADC |
+| [msgs](src/msgs/) | Interfaces |
+
+## Operations
+
+```bash
+scripts/systemd/status.sh
+scripts/systemd/logs.sh all
+sudo systemctl restart delatometry-core delatometry-webui
 ```
 
-### Each directory has its own git
-* rpi : root of project
-    - hmi : root of hmi project
-    - ros : root of ros project
+## Legacy notes
+
+Older material under `documents/` (deploy, Docker, UART) is kept for reference; prefer **`docs/`** for current ROS 2 stack behavior.
+
+## License
+
+See repository and submodule licenses per package.
