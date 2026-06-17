@@ -30,6 +30,10 @@ echo "[services] workspace: $WORKSPACE"
 echo "[services] run user:  $RUN_USER:$RUN_GROUP"
 echo "[services] env file:  $ENV_FILE"
 
+_OVERRIDE_RPI_MODEL="${DELATOMETRY_RPI_MODEL:-}"
+_OVERRIDE_PWM_BACKEND="${DELATOMETRY_PWM_BACKEND:-}"
+_OVERRIDE_HMI_PORT="${DELATOMETRY_HMI_PORT:-}"
+
 sudo install -d -m 0755 "$(dirname "$ENV_FILE")"
 sudo install -d -m 0755 /etc/delatometry
 sudo install -d -m 0755 /run/delatometry
@@ -41,6 +45,16 @@ if [ -f "$ENV_FILE" ]; then
   source "$ENV_FILE"
   set +a
   echo "[services] preserving existing values from $ENV_FILE"
+fi
+
+if [ -n "$_OVERRIDE_RPI_MODEL" ]; then
+  DELATOMETRY_RPI_MODEL="$_OVERRIDE_RPI_MODEL"
+fi
+if [ -n "$_OVERRIDE_PWM_BACKEND" ]; then
+  DELATOMETRY_PWM_BACKEND="$_OVERRIDE_PWM_BACKEND"
+fi
+if [ -n "$_OVERRIDE_HMI_PORT" ]; then
+  DELATOMETRY_HMI_PORT="$_OVERRIDE_HMI_PORT"
 fi
 
 : "${DELATOMETRY_WORKSPACE:=$WORKSPACE}"
@@ -80,6 +94,14 @@ fi
 : "${DELATOMETRY_HMI_BAUDRATE:=115200}"
 : "${DELATOMETRY_HMI_DATABASE_REQUIRED:=true}"
 : "${DELATOMETRY_HMI_DATABASE_WAIT_TIMEOUT_SEC:=30.0}"
+: "${DELATOMETRY_RPI_MODEL:=}"
+: "${DELATOMETRY_PWM_BACKEND:=auto}"
+
+if [ "$DELATOMETRY_RPI_MODEL" = rpi5 ]; then
+  DELATOMETRY_PWM_BACKEND=lgpio
+elif [ "$DELATOMETRY_RPI_MODEL" = rpi4 ]; then
+  DELATOMETRY_PWM_BACKEND=pigpio
+fi
 
 sudo tee "$ENV_FILE" >/dev/null <<EOF
 # Delatometry system runtime configuration.
@@ -130,6 +152,8 @@ DELATOMETRY_CORE_ENABLE_DATABASE_CLIENT="$DELATOMETRY_CORE_ENABLE_DATABASE_CLIEN
 DELATOMETRY_CORE_ENABLE_PWM_CONTROLLER="$DELATOMETRY_CORE_ENABLE_PWM_CONTROLLER"
 DELATOMETRY_CORE_PWM_PIN_CH1="$DELATOMETRY_CORE_PWM_PIN_CH1"
 DELATOMETRY_CORE_PWM_PIN_CH2="$DELATOMETRY_CORE_PWM_PIN_CH2"
+DELATOMETRY_RPI_MODEL="$DELATOMETRY_RPI_MODEL"
+DELATOMETRY_PWM_BACKEND="$DELATOMETRY_PWM_BACKEND"
 
 # HMI serial display (fixed on-board UART)
 DELATOMETRY_HMI_PORT="$DELATOMETRY_HMI_PORT"
@@ -207,11 +231,18 @@ write_unit "delatometry-im3536" \
   "" \
   ""
 
+ADS1256_AFTER=""
+ADS1256_WANTS=""
+if [ "$DELATOMETRY_RPI_MODEL" != rpi5 ] && [ "$DELATOMETRY_PWM_BACKEND" != lgpio ]; then
+  ADS1256_AFTER="pigpiod.service"
+  ADS1256_WANTS="pigpiod.service"
+fi
+
 write_unit "delatometry-ads1256" \
   "Delatometry ADS1256 ROS 2 node" \
   "ads1256" \
-  "pigpiod.service" \
-  "pigpiod.service" \
+  "$ADS1256_AFTER" \
+  "$ADS1256_WANTS" \
   ""
 
 write_unit "delatometry-core" \

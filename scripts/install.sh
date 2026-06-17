@@ -27,6 +27,14 @@ INSTALL_ROS="${INSTALL_ROS:-1}"
 ENABLE_SPI="${ENABLE_SPI:-}"
 START_PIGPIOD="${START_PIGPIOD:-1}"
 INSTALL_WEBUI_SUDOERS="${INSTALL_WEBUI_SUDOERS:-1}"
+# Raspberry Pi board: rpi4 | rpi5 | none (set DELATOMETRY_RPI_MODEL or RPI_MODEL to skip dialog)
+RPI_MODEL="${RPI_MODEL:-${DELATOMETRY_RPI_MODEL:-}}"
+DELATOMETRY_PWM_BACKEND="${DELATOMETRY_PWM_BACKEND:-}"
+PI5_PWM_OVERLAY_ADDED=0
+ADD_PI5_PWM_OVERLAY="${ADD_PI5_PWM_OVERLAY:-1}"
+SWAP_SIZE_MB="${SWAP_SIZE_MB:-2048}"
+HMI_UART_REBOOT=0
+DELATOMETRY_HMI_PORT="${DELATOMETRY_HMI_PORT:-}"
 
 # Non-interactive: INSTALL_MODE=scratch|rebuild
 INSTALL_MODE="${INSTALL_MODE:-}"
@@ -62,6 +70,238 @@ detect_pi5() {
     return 0
   fi
   return 1
+}
+
+load_saved_rpi_model() {
+  local env_file="${ENV_FILE:-/etc/default/delatometry}"
+  if [ -n "$RPI_MODEL" ]; then
+    return 0
+  fi
+  if [ -f "$env_file" ]; then
+    # shellcheck disable=SC1090
+    source "$env_file"
+    RPI_MODEL="${DELATOMETRY_RPI_MODEL:-}"
+  fi
+}
+
+select_pi_model() {
+  load_saved_rpi_model
+
+  if [ -n "$RPI_MODEL" ]; then
+    _install_log "Raspberry Pi model: $RPI_MODEL (from environment or saved config)"
+    return 0
+  fi
+
+  if ! detect_raspberry_pi; then
+    RPI_MODEL=none
+    _install_log "Not a Raspberry Pi — skipping board-specific PWM setup"
+    return 0
+  fi
+
+  local detected default_choice
+  if detect_pi5; then
+    detected="Raspberry Pi 5"
+    default_choice=rpi5
+  else
+    detected="Raspberry Pi 4 or earlier"
+    default_choice=rpi4
+  fi
+
+  if interactive_ui_enabled; then
+    ensure_whiptail
+    local rc=0
+    RPI_MODEL=$(whiptail --title "Raspberry Pi model" --menu \
+      "Detected: ${detected}\n\nSelect your board (sets heater PWM backend and pigpiod):" \
+      18 74 3 \
+      "rpi4" "Pi 4 / Pi 3 / Zero 2 W — pigpiod for PWM" \
+      "rpi5" "Pi 5 — lgpio for PWM (pigpiod not supported)" \
+      3>&1 1>&2 2>&3) || rc=$?
+    whiptail_handle_cancel "$rc"
+    [ -n "${RPI_MODEL:-}" ] || _install_die "Raspberry Pi model not selected"
+  else
+    RPI_MODEL="$default_choice"
+    _install_log "Non-interactive install — using detected model: $RPI_MODEL"
+  fi
+
+  _install_log "Raspberry Pi model selected: $RPI_MODEL"
+}
+
+ensure_pi5_pwm_overlay() {
+  local boot_cfg=""
+  for boot_cfg in /boot/firmware/config.txt /boot/config.txt; do
+    [ -f "$boot_cfg" ] || continue
+    if grep -qE '^[[:space:]]*dtoverlay=pwm' "$boot_cfg" 2>/dev/null; then
+      _install_log "Pi 5: dtoverlay=pwm already present in $boot_cfg"
+      return 0
+    fi
+
+    local add_overlay=0
+    if interactive_ui_enabled; then
+      local rc=0
+      whiptail --title "Pi 5 hardware PWM" --yesno \
+        "Add dtoverlay=pwm to\n  ${boot_cfg}\n\nRequired for heater PWM on GPIO 18/19.\nYou must reboot after install." \
+        14 72 || rc=$?
+      [ "$rc" -eq 0 ] && add_overlay=1
+    elif [ "$ADD_PI5_PWM_OVERLAY" = "1" ]; then
+      add_overlay=1
+    fi
+
+    if [ "$add_overlay" = "1" ]; then
+      echo "dtoverlay=pwm" | sudo tee -a "$boot_cfg" >/dev/null
+      PI5_PWM_OVERLAY_ADDED=1
+      _install_log "Pi 5: added dtoverlay=pwm to $boot_cfg (reboot required)"
+    else
+      _install_log "Pi 5: skipped dtoverlay=pwm — add manually to $boot_cfg if PWM fails"
+    fi
+    return 0
+  done
+  _install_log "WARN: Pi 5 boot config not found — add dtoverlay=pwm manually"
+}
+
+set_boot_config_kv() {
+  local key="$1"
+  local value="$2"
+  local boot_cfg=""
+  for boot_cfg in /boot/firmware/config.txt /boot/config.txt; do
+    [ -f "$boot_cfg" ] || continue
+    if grep -qE "^[[:space:]]*${key}=" "$boot_cfg" 2>/dev/null; then
+      sudo sed -i "s/^[[:space:]]*${key}=.*/${key}=${value}/" "$boot_cfg"
+    else
+      echo "${key}=${value}" | sudo tee -a "$boot_cfg" >/dev/null
+    fi
+  done
+}
+
+setup_swap_2gb() {
+  if ! detect_raspberry_pi; then
+    return 0
+  fi
+
+  local size_mb="${SWAP_SIZE_MB:-2048}"
+  _install_log "Setting swap to ${size_mb} MB..."
+  sudo apt install -y dphys-swapfile 2>/dev/null || true
+
+  if [ ! -f /etc/dphys-swapfile ]; then
+    _install_log "WARN: /etc/dphys-swapfile not found — swap not configured"
+    return 0
+  fi
+
+  if grep -q '^CONF_SWAPSIZE=' /etc/dphys-swapfile 2>/dev/null; then
+    sudo sed -i "s/^CONF_SWAPSIZE=.*/CONF_SWAPSIZE=${size_mb}/" /etc/dphys-swapfile
+  else
+    echo "CONF_SWAPSIZE=${size_mb}" | sudo tee -a /etc/dphys-swapfile >/dev/null
+  fi
+
+  if grep -q '^CONF_MAXSWAP=' /etc/dphys-swapfile 2>/dev/null; then
+    sudo sed -i "s/^CONF_MAXSWAP=.*/CONF_MAXSWAP=${size_mb}/" /etc/dphys-swapfile
+  fi
+
+  if command -v dphys-swapfile >/dev/null 2>&1; then
+    sudo dphys-swapfile swapoff 2>/dev/null || true
+    sudo dphys-swapfile setup
+    sudo dphys-swapfile swapon 2>/dev/null || true
+    if swapon --show 2>/dev/null | grep -q .; then
+      _install_log "Swap active: $(swapon --show --noheadings --bytes 2>/dev/null | awk 'NR==1{printf "%.1f GB", $3/1024/1024/1024}')"
+    else
+      _install_log "WARN: swap setup finished but no swap appears active (reboot may be required)"
+    fi
+  else
+    _install_log "WARN: dphys-swapfile command not found"
+  fi
+}
+
+resolve_hmi_uart_port() {
+  if [ -e /dev/serial0 ]; then
+    readlink -f /dev/serial0 2>/dev/null || echo /dev/serial0
+    return 0
+  fi
+  case "${RPI_MODEL:-}" in
+    rpi5)
+      if [ -e /dev/ttyAMA10 ]; then
+        echo /dev/ttyAMA10
+      else
+        echo /dev/ttyAMA0
+      fi
+      ;;
+    *)
+      if [ -e /dev/ttyAMA0 ]; then
+        echo /dev/ttyAMA0
+      else
+        echo /dev/ttyS0
+      fi
+      ;;
+  esac
+}
+
+setup_uart_for_hmi() {
+  if ! detect_raspberry_pi; then
+    return 0
+  fi
+
+  _install_log "Enabling UART on GPIO 14/15 (HMI / Nextion TX-RX pins)..."
+
+  if command -v raspi-config >/dev/null 2>&1; then
+    sudo raspi-config nonint do_serial_hw 0 || true
+    sudo raspi-config nonint do_serial_cons 1 || true
+  else
+    _install_log "WARN: raspi-config not found — enabling enable_uart=1 in boot config only"
+  fi
+
+  set_boot_config_kv enable_uart 1
+
+  local svc=""
+  for svc in \
+    serial-getty@ttyS0.service \
+    serial-getty@ttyAMA0.service \
+    serial-getty@ttyAMA10.service \
+    serial-getty@serial0.service
+  do
+    sudo systemctl disable --now "$svc" 2>/dev/null || true
+    sudo systemctl mask "$svc" 2>/dev/null || true
+  done
+
+  local hmi_port=""
+  hmi_port="$(resolve_hmi_uart_port)"
+  if [ -z "${DELATOMETRY_HMI_PORT:-}" ] || [ "$DELATOMETRY_HMI_PORT" = /dev/ttyS0 ]; then
+    DELATOMETRY_HMI_PORT="$hmi_port"
+  fi
+  HMI_UART_REBOOT=1
+  _install_log "HMI serial port set to ${DELATOMETRY_HMI_PORT} (GPIO header UART; reboot after install)"
+}
+
+setup_pi_pwm() {
+  case "${RPI_MODEL:-none}" in
+    rpi5)
+      START_PIGPIOD=0
+      DELATOMETRY_PWM_BACKEND=lgpio
+      _install_log "Pi 5: heater PWM via lgpio — disabling pigpiod"
+      sudo apt install -y python3-lgpio 2>/dev/null || true
+      sudo systemctl stop pigpiod 2>/dev/null || true
+      sudo systemctl disable pigpiod 2>/dev/null || true
+      sudo systemctl mask pigpiod 2>/dev/null || true
+      ensure_pi5_pwm_overlay
+      ;;
+    rpi4)
+      START_PIGPIOD=1
+      DELATOMETRY_PWM_BACKEND=pigpio
+      _install_log "Pi 4: heater PWM via pigpiod"
+      sudo systemctl unmask pigpiod 2>/dev/null || true
+      sudo apt install -y pigpio python3-pigpio 2>/dev/null || true
+      if [ "$START_PIGPIOD" = "1" ]; then
+        sudo systemctl enable pigpiod 2>/dev/null || true
+        if ! sudo systemctl start pigpiod 2>/dev/null; then
+          _install_log "WARN: pigpiod failed to start — check: systemctl status pigpiod"
+        fi
+      fi
+      ;;
+    none)
+      DELATOMETRY_PWM_BACKEND="${DELATOMETRY_PWM_BACKEND:-auto}"
+      _install_log "Skipping Raspberry Pi PWM / pigpiod setup (not a Pi board)"
+      ;;
+    *)
+      _install_die "Unknown RPI_MODEL=$RPI_MODEL (use rpi4 or rpi5)"
+      ;;
+  esac
 }
 
 ensure_whiptail() {
@@ -233,27 +473,10 @@ setup_hardware_groups() {
     sudo raspi-config nonint do_spi 0 || true
   fi
 
-  if detect_pi5; then
-    START_PIGPIOD=0
-    _install_log "Raspberry Pi 5 detected — heater PWM uses lgpio (stock pigpiod is unsupported)"
-    sudo apt install -y python3-lgpio 2>/dev/null || true
-    sudo systemctl disable --now pigpiod 2>/dev/null || true
-    local boot_cfg=""
-    for boot_cfg in /boot/firmware/config.txt /boot/config.txt; do
-      if [ -f "$boot_cfg" ] && ! grep -q '^dtoverlay=pwm' "$boot_cfg" 2>/dev/null; then
-        _install_log "Pi 5 PWM: add dtoverlay=pwm to $boot_cfg and reboot if heater PWM fails"
-        break
-      fi
-    done
-  elif detect_raspberry_pi; then
-    sudo apt install -y python3-lgpio 2>/dev/null || true
-  fi
-
-  if [ "$START_PIGPIOD" = "1" ]; then
-    _install_log "Enabling pigpiod (PWM GPIO on Pi 4 and earlier)..."
-    sudo systemctl enable pigpiod 2>/dev/null || true
-    sudo systemctl start pigpiod 2>/dev/null || true
-  fi
+  select_pi_model
+  setup_pi_pwm
+  setup_swap_2gb
+  setup_uart_for_hmi
 }
 
 setup_python_venv() {
@@ -339,6 +562,21 @@ verify_installation() {
   python3 -c "import matplotlib; matplotlib.use('Agg'); print('  matplotlib OK')"
   _install_log "Verifying Python imports and tools..."
   python3 -c "import markdown; print('  markdown OK')"
+  case "${RPI_MODEL:-none}" in
+    rpi5)
+      python3 -c "import lgpio; print('  lgpio OK (Pi 5 PWM)')" \
+        || _install_log "WARN: lgpio import failed — run: sudo apt install python3-lgpio"
+      ;;
+    rpi4)
+      python3 -c "import pigpio; print('  pigpio OK (Pi 4 PWM)')" \
+        || _install_log "WARN: pigpio import failed"
+      if systemctl is-active pigpiod >/dev/null 2>&1; then
+        echo "  pigpiod OK"
+      else
+        _install_log "WARN: pigpiod is not running"
+      fi
+      ;;
+  esac
   local _path_ext="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
   PATH="$_path_ext:$PATH" command -v dnsmasq >/dev/null 2>&1 && echo "  dnsmasq OK" \
     || _install_log "WARN: dnsmasq not in PATH (hotspot DHCP will not work)"
@@ -355,6 +593,8 @@ verify_installation() {
 install_systemd_services() {
   [ "$INSTALL_SERVICES" = "1" ] || return 0
   _install_log "Installing systemd service units..."
+  RPI_MODEL="${RPI_MODEL:-none}"
+  DELATOMETRY_PWM_BACKEND="${DELATOMETRY_PWM_BACKEND:-auto}"
   START_SERVICES="$START_SERVICES" \
   ENABLE_SERVICES=1 \
   WORKSPACE="$WORKSPACE" \
@@ -365,6 +605,9 @@ install_systemd_services() {
   DB_NAME="$DB_NAME" \
   DB_USER="$DB_USER" \
   DB_PASSWORD="$DB_PASSWORD" \
+  DELATOMETRY_RPI_MODEL="$RPI_MODEL" \
+  DELATOMETRY_PWM_BACKEND="$DELATOMETRY_PWM_BACKEND" \
+  DELATOMETRY_HMI_PORT="${DELATOMETRY_HMI_PORT:-}" \
     "$WORKSPACE/scripts/systemd/install_services.sh"
 }
 
@@ -403,7 +646,7 @@ run_scratch_install() {
   if interactive_ui_enabled; then
     local rc=0
     whiptail --title "Full one-click install" --msgbox \
-      "This will install:\n  • System packages (MariaDB, pigpio, Python, …)\n  • ROS 2 ${ROS_DISTRO} on apt target ${OS_CODENAME} (if missing)\n  • Python venv + pip requirements\n  • colcon build all Delatometry packages\n  • systemd units + webui sudoers\n  • start services\n\nWorkspace:\n  $WORKSPACE" \
+      "This will install:\n  • System packages (MariaDB, Python, GPIO, …)\n  • Raspberry Pi model dialog (Pi 4 vs Pi 5 PWM setup)\n  • 2 GB swap + UART on GPIO for HMI\n  • ROS 2 ${ROS_DISTRO} on apt target ${OS_CODENAME} (if missing)\n  • Python venv + pip requirements\n  • colcon build all Delatometry packages\n  • systemd units + webui sudoers\n  • start services\n\nWorkspace:\n  $WORKSPACE" \
       20 74 || rc=$?
     whiptail_handle_cancel "$rc"
   fi
@@ -433,6 +676,18 @@ run_rebuild_install() {
     whiptail_handle_cancel "$rc"
   fi
 
+  load_saved_rpi_model
+  if detect_raspberry_pi && [ -z "${RPI_MODEL:-}" ]; then
+    select_pi_model
+  fi
+  if [ -n "${RPI_MODEL:-}" ] && [ "$RPI_MODEL" != none ]; then
+    setup_pi_pwm
+  fi
+  if detect_raspberry_pi; then
+    setup_swap_2gb
+    setup_uart_for_hmi
+  fi
+
   ensure_ros
   if [ -d "$VENV_DIR" ]; then
     activate_venv "$VENV_DIR"
@@ -456,6 +711,16 @@ print_summary() {
   echo " ROS target: ${OS_CODENAME} + ROS 2 ${ROS_DISTRO}"
   echo " ROS setup:  $ROS_SETUP"
   echo " Config:     /etc/default/delatometry"
+  if [ -n "${RPI_MODEL:-}" ] && [ "$RPI_MODEL" != none ]; then
+    echo " Pi model:   $RPI_MODEL"
+    echo " PWM backend:${DELATOMETRY_PWM_BACKEND:-auto}"
+    if [ "$RPI_MODEL" = rpi5 ]; then
+      echo " Pi 5 PWM:   lgpio (pigpiod disabled/masked)"
+      [ "$PI5_PWM_OVERLAY_ADDED" = "1" ] && echo " Reboot:     required (dtoverlay=pwm was added)"
+    elif [ "$RPI_MODEL" = rpi4 ]; then
+      echo " Pi 4 PWM:   pigpiod"
+    fi
+  fi
   echo " Web UI:     http://$(hostname -I 2>/dev/null | awk '{print $1}')/"
   echo " Docs:       http://$(hostname -I 2>/dev/null | awk '{print $1}')/docs"
   echo " Status:     $WORKSPACE/scripts/systemd/status.sh"
@@ -464,6 +729,15 @@ print_summary() {
   if [ "$INSTALL_MODE" = "scratch" ]; then
     echo " If serial/SPI/GPIO access fails, reboot once:"
     echo "   sudo reboot"
+  fi
+  if detect_raspberry_pi 2>/dev/null; then
+    echo " Swap:       ${SWAP_SIZE_MB:-2048} MB (dphys-swapfile)"
+    if [ -n "${DELATOMETRY_HMI_PORT:-}" ]; then
+      echo " HMI UART:   ${DELATOMETRY_HMI_PORT}"
+    fi
+    if [ "$PI5_PWM_OVERLAY_ADDED" = "1" ] || [ "${HMI_UART_REBOOT:-0}" = "1" ]; then
+      echo " Reboot:     recommended after first install (UART / PWM boot config)"
+    fi
   fi
   echo "=============================================="
 }
