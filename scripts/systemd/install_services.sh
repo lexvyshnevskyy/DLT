@@ -14,7 +14,9 @@ else
 fi
 RUN_GROUP="${RUN_GROUP:-$(id -gn "$RUN_USER")}"
 
-ROS_SETUP="${ROS_SETUP:-/opt/ros/jazzy/setup.bash}"
+ROS_DISTRO="${ROS_DISTRO:-jazzy}"
+OS_CODENAME="${OS_CODENAME:-}"
+ROS_SETUP="${ROS_SETUP:-/opt/ros/${ROS_DISTRO}/setup.bash}"
 VENV_DIR="${VENV_DIR:-$HOME/venvs/ros2_delatometry_webui}"
 
 # Defaults are intentionally editable in /etc/default/delatometry after install.
@@ -30,6 +32,7 @@ echo "[services] env file:  $ENV_FILE"
 
 sudo install -d -m 0755 "$(dirname "$ENV_FILE")"
 sudo install -d -m 0755 /etc/delatometry
+sudo install -d -m 0755 /run/delatometry
 
 if [ -f "$ENV_FILE" ]; then
   sudo cp "$ENV_FILE" "$ENV_FILE.bak.$(date +%Y%m%d_%H%M%S)"
@@ -42,6 +45,8 @@ fi
 
 : "${DELATOMETRY_WORKSPACE:=$WORKSPACE}"
 : "${DELATOMETRY_ROS_SETUP:=$ROS_SETUP}"
+: "${DELATOMETRY_ROS_DISTRO:=$ROS_DISTRO}"
+: "${DELATOMETRY_OS_CODENAME:=$OS_CODENAME}"
 : "${DELATOMETRY_VENV:=$VENV_DIR}"
 : "${DELATOMETRY_DB_HOST:=$DB_HOST}"
 : "${DELATOMETRY_DB_PORT:=$DB_PORT}"
@@ -58,7 +63,7 @@ fi
 : "${DELATOMETRY_ADS1256_FALLBACK_TO_SIMULATION:=true}"
 : "${DELATOMETRY_CORE_NAMESPACE:=core}"
 : "${DELATOMETRY_CORE_MEASUREMENT_TOPIC:=/ltm2985/measurement}"
-: "${DELATOMETRY_CORE_ENABLE_DATABASE_CLIENT:=false}"
+: "${DELATOMETRY_CORE_ENABLE_DATABASE_CLIENT:=true}"
 : "${DELATOMETRY_CORE_ENABLE_PWM_CONTROLLER:=false}"
 : "${DELATOMETRY_CORE_PWM_PIN_CH1:=18}"
 : "${DELATOMETRY_CORE_PWM_PIN_CH2:=19}"
@@ -73,6 +78,8 @@ sudo tee "$ENV_FILE" >/dev/null <<EOF
 
 DELATOMETRY_WORKSPACE="$DELATOMETRY_WORKSPACE"
 DELATOMETRY_ROS_SETUP="$DELATOMETRY_ROS_SETUP"
+DELATOMETRY_ROS_DISTRO="$DELATOMETRY_ROS_DISTRO"
+DELATOMETRY_OS_CODENAME="$DELATOMETRY_OS_CODENAME"
 DELATOMETRY_VENV="$DELATOMETRY_VENV"
 
 # Database

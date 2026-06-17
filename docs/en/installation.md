@@ -1,43 +1,80 @@
 # Installation
 
-## Requirements
+## One-click install (recommended)
 
-| Item | Version / notes |
-|------|-----------------|
-| OS | Ubuntu / Debian (22.04+), Raspberry Pi OS supported |
-| ROS 2 | **Jazzy** (`/opt/ros/jazzy/setup.bash`) |
-| Database | MariaDB |
-| Python | 3.10+; venv for webui (`DELATOMETRY_VENV`) |
-| Hardware | LTM2985 UART, optional measure device / ADS1256 |
-
-## Recommended: `scripts/install.sh`
-
-From the workspace root:
+On a **fresh Ubuntu 24.04** machine (including Raspberry Pi images based on Noble):
 
 ```bash
 cd ~/ros2_delatometry
 bash scripts/install.sh
 ```
 
-Interactive menu:
+Choose **Full one-click** (scratch). You will then pick the **OS codename + ROS 2 distro** (e.g. **Debian Bookworm + Jazzy** on a Pi OS test board). The script installs:
 
-1. **Full install** — apt packages, MariaDB, Python venv, all `requirements.txt` under `src/`, `colcon build`, systemd units, optional sudoers for webui.
-2. **Rebuild** — refresh build and restart services.
+| Step | What |
+|------|------|
+| apt | MariaDB, pigpio, Python, build tools, VPN helpers |
+| ROS 2 | Selected pair from dialog (e.g. `bookworm` + `jazzy`) via official apt |
+| rosdep | Workspace dependencies |
+| DB | Database `exp`, user `delatometry` |
+| Python | venv + all `src/*/requirements.txt` |
+| colcon | All 8 Delatometry packages |
+| systemd | Services enabled and started |
+| sudoers | Web UI service control (optional) |
 
-Non-interactive:
+Non-interactive (CI / SSH):
 
 ```bash
 INSTALL_MODE=scratch bash scripts/install.sh
 INSTALL_MODE=rebuild bash scripts/install.sh
 ```
 
-Environment variables (examples):
+Run as a **normal user with sudo** (not root).
 
-| Variable | Purpose |
-|----------|---------|
-| `DELATOMETRY_WORKSPACE` | Workspace path (default `~/ros2_delatometry`) |
-| `DELATOMETRY_VENV` | Web UI venv path |
-| `DELATOMETRY_DB_*` | MariaDB name, user, password |
+## Requirements
+
+| Item | Version / notes |
+|------|-----------------|
+| OS | Ubuntu 24.04, Debian 12 Bookworm (Pi OS), etc. — pick matching target in dialog |
+| ROS 2 | Jazzy (Noble/Bookworm), Humble (Jammy), Rolling, Kilted — `/opt/ros/<distro>/setup.bash` |
+| Database | MariaDB (installed by scratch mode) |
+| Python | 3.10+; venv `~/venvs/ros2_delatometry_webui` |
+| Hardware | LTM2985 UART; optional measure device / ADS1256 |
+
+**Bookworm test board:** choose **Debian 12 Bookworm + ROS 2 Jazzy** (pre-selected when the installer detects `bookworm`).
+
+## Installer environment variables
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `INSTALL_MODE` | (menu) | `scratch` or `rebuild` |
+| `ROS_TARGET` | (dialog / auto) | Profile: `bookworm-jazzy`, `noble-jazzy`, `jammy-humble`, … |
+| `OS_CODENAME` | (from profile) | Apt codename for ros-apt-source: `bookworm`, `noble`, `jammy` |
+| `ROS_DISTRO` | (from profile) | `jazzy`, `humble`, `rolling`, `kilted` |
+| `INSTALL_ROS` | `1` | Auto-install ROS 2 when missing |
+| `ROS_SETUP` | `/opt/ros/<distro>/setup.bash` | ROS setup script path |
+| `WORKSPACE` | auto-detect | Colcon workspace root |
+| `VENV_DIR` | `~/venvs/ros2_delatometry_webui` | Web UI Python venv |
+| `DB_NAME` / `DB_USER` / `DB_PASSWORD` | `exp` / `delatometry` / `delatometry` | MariaDB |
+| `INSTALL_SERVICES` | `1` | Install systemd units |
+| `START_SERVICES` | `1` | Start services after install |
+| `START_PIGPIOD` | `1` | Enable pigpiod for PWM GPIO |
+| `ENABLE_SPI` | auto on Pi | `raspi-config` SPI enable |
+| `INSTALL_WEBUI_SUDOERS` | `1` | Dashboard systemctl via sudo |
+
+Non-interactive Bookworm example:
+
+```bash
+ROS_TARGET=bookworm-jazzy INSTALL_MODE=scratch bash scripts/install.sh
+```
+
+Or explicit:
+
+```bash
+OS_CODENAME=bookworm ROS_DISTRO=jazzy INSTALL_MODE=scratch bash scripts/install.sh
+```
+
+Saved in `/etc/default/delatometry` as `DELATOMETRY_OS_CODENAME` and `DELATOMETRY_ROS_DISTRO` for rebuilds.
 
 ## After install
 

@@ -49,6 +49,14 @@ colcon build --symlink-install
 journalctl -u delatometry-webui -f
 ```
 
+## Hotspot has SSID but clients get no IP
+
+1. Install **dnsmasq** and the hotspot unit: `sudo apt install dnsmasq`, then re-run `scripts/install.sh` (rebuild) or `scripts/systemd/install_services.sh`.
+2. Reinstall webui sudoers: `sudo bash src/webui/scripts/install_sudoers.sh`
+3. Check DHCP service: `systemctl status delatometry-hotspot-dnsmasq.service`
+4. Config must exist after enable: `/etc/delatometry/hotspot-dnsmasq.conf`
+5. Logs: `journalctl -u delatometry-hotspot-dnsmasq.service -f`
+
 ## Configuration file
 
 Review `/etc/default/delatometry` for workspace path, venv, DB password, and `ROS_DOMAIN_ID` mismatches between nodes.

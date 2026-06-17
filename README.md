@@ -2,22 +2,25 @@
 
 Temperature-programmed experiments on Linux / Raspberry Pi: **core** runs programs and PI control; **MariaDB** stores results; **web UI** and **Nextion HMI** operate the system.
 
-## Quick start
+## One-click install
+
+On **Ubuntu 24.04** (fresh Pi or PC):
 
 ```bash
 cd ~/ros2_delatometry
 bash scripts/install.sh
 ```
 
-Requires **ROS 2 Jazzy**. After install: `http://<device-ip>/`  
-Config: `/etc/default/delatometry`
+**Full one-click** installs system packages, **ROS 2 Jazzy** (if missing), MariaDB, Python venv, builds all packages, and enables systemd services.
 
-Non-interactive install:
+Non-interactive:
 
 ```bash
 INSTALL_MODE=scratch bash scripts/install.sh
 INSTALL_MODE=rebuild bash scripts/install.sh
 ```
+
+After install: `http://<device-ip>/` · Config: `/etc/default/delatometry`
 
 ## Documentation
 

@@ -1,32 +1,38 @@
 # Встановлення
 
-## Вимоги
+## Встановлення в один клік
 
-| Компонент | Примітки |
-|-----------|----------|
-| ОС | Ubuntu / Debian 22.04+, Raspberry Pi OS |
-| ROS 2 | **Jazzy** (`/opt/ros/jazzy/setup.bash`) |
-| БД | MariaDB |
-| Python | 3.10+; venv для webui |
-| Апаратура | LTM2985 UART; опційно measure_device / ADS1256 |
-
-## Рекомендовано: `scripts/install.sh`
+На **чистій Ubuntu 24.04** (зокрема Raspberry Pi):
 
 ```bash
 cd ~/ros2_delatometry
 bash scripts/install.sh
 ```
 
-Меню:
-
-1. **Повне встановлення** — apt, MariaDB, venv, pip, colcon, systemd, sudoers для webui.
-2. **Перезбірка** — оновлення збірки та перезапуск служб.
+Оберіть **Full one-click** — потім оберіть **версію ОС + ROS 2** (наприклад **Debian Bookworm + Jazzy** для тестової Pi). Далі: apt, ROS, MariaDB, venv, colcon, systemd.
 
 Без інтерактиву:
 
 ```bash
 INSTALL_MODE=scratch bash scripts/install.sh
 INSTALL_MODE=rebuild bash scripts/install.sh
+```
+
+Запускайте звичайним користувачем з **sudo** (не root).
+
+## Вимоги
+
+| Компонент | Примітки |
+|-----------|----------|
+| ОС | Ubuntu 24.04, Debian 12 Bookworm (Pi OS) — відповідна пара в діалозі |
+| ROS 2 | Jazzy, Humble, Rolling — `/opt/ros/<distro>/setup.bash` |
+| БД | MariaDB (встановлюється скриптом) |
+| Python | venv `~/venvs/ros2_delatometry_webui` |
+
+**Bookworm:** оберіть **Debian 12 Bookworm + ROS 2 Jazzy** (автовибір при виявленні `bookworm`).
+
+```bash
+ROS_TARGET=bookworm-jazzy INSTALL_MODE=scratch bash scripts/install.sh
 ```
 
 ## Після встановлення

@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
-# Delatometry project installer — run from repo root: bash scripts/install.sh
+# Delatometry one-click installer — run from repo root: bash scripts/install.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 source "$SCRIPT_DIR/lib/common.sh"
+# shellcheck source=lib/ros2_install.sh
+source "$SCRIPT_DIR/lib/ros2_install.sh"
+# ros2_install_source.sh is sourced from ros2_install.sh
+# shellcheck source=lib/ros_target.sh
+source "$SCRIPT_DIR/lib/ros_target.sh"
 
 WORKSPACE="${WORKSPACE:-$(detect_workspace "$SCRIPT_DIR" || _install_die "Cannot find workspace (expected src/msgs under $(dirname "$SCRIPT_DIR"))")}"
-ROS_SETUP="${ROS_SETUP:-/opt/ros/jazzy/setup.bash}"
+ROS_DISTRO="${ROS_DISTRO:-}"
+ROS_SETUP="${ROS_SETUP:-}"
+OS_CODENAME="${OS_CODENAME:-}"
 VENV_DIR="${VENV_DIR:-$HOME/venvs/ros2_delatometry_webui}"
 
 DB_NAME="${DB_NAME:-exp}"
@@ -16,12 +23,32 @@ DB_PASSWORD="${DB_PASSWORD:-delatometry}"
 
 INSTALL_SERVICES="${INSTALL_SERVICES:-1}"
 START_SERVICES="${START_SERVICES:-1}"
-ENABLE_SPI="${ENABLE_SPI:-0}"
+INSTALL_ROS="${INSTALL_ROS:-1}"
+ENABLE_SPI="${ENABLE_SPI:-}"
 START_PIGPIOD="${START_PIGPIOD:-1}"
 INSTALL_WEBUI_SUDOERS="${INSTALL_WEBUI_SUDOERS:-1}"
 
 # Non-interactive: INSTALL_MODE=scratch|rebuild
 INSTALL_MODE="${INSTALL_MODE:-}"
+
+ensure_not_root() {
+  if [ "$(id -u)" -eq 0 ]; then
+    _install_die "Run as a normal user with sudo (not as root). Example: bash scripts/install.sh"
+  fi
+  if ! command -v sudo >/dev/null 2>&1; then
+    _install_die "sudo is required for one-click install"
+  fi
+}
+
+detect_raspberry_pi() {
+  if [ -f /proc/device-tree/model ] && grep -qi raspberry /proc/device-tree/model 2>/dev/null; then
+    return 0
+  fi
+  if grep -qi raspberry /proc/cpuinfo 2>/dev/null; then
+    return 0
+  fi
+  return 1
+}
 
 ensure_whiptail() {
   if command -v whiptail >/dev/null 2>&1; then
@@ -33,22 +60,29 @@ ensure_whiptail() {
 }
 
 show_menu() {
+  if ! interactive_ui_enabled; then
+    _install_die "No interactive UI. Set INSTALL_MODE=scratch or INSTALL_MODE=rebuild"
+  fi
   ensure_whiptail
-  CHOICE=$(whiptail --title "Delatometry installer" --menu "Choose install mode" 16 72 4 \
-    "scratch" "Full install from scratch (OS deps, DB, build, services)" \
-    "rebuild" "Rebuild all ROS packages and restart services" \
-    3>&1 1>&2 2>&3) || exit 0
+  local rc=0
+  CHOICE=$(whiptail --title "Delatometry installer" --menu "Choose install mode" 18 74 4 \
+    "scratch" "Full one-click: OS deps, ROS 2 (you pick version), DB, build" \
+    "rebuild" "Rebuild ROS packages and restart services" \
+    3>&1 1>&2 2>&3) || rc=$?
+  whiptail_handle_cancel "$rc"
+  [ -n "${CHOICE:-}" ] || _install_die "Install mode not selected"
   INSTALL_MODE="$CHOICE"
 }
 
 install_apt_packages() {
-  _install_log "Installing system packages (apt)..."
+  _install_log "Installing base system packages (apt)..."
   sudo apt update
   sudo apt install -y \
     whiptail \
     curl \
     git \
     unzip \
+    rsync \
     net-tools \
     wireless-tools \
     network-manager \
@@ -57,22 +91,36 @@ install_apt_packages() {
     python3-pip \
     python3-dev \
     build-essential \
-    python3-colcon-common-extensions \
-    python3-rosdep \
+    cmake \
+    pkg-config \
     python3-serial \
     python3-psutil \
     python3-matplotlib \
     python3-pigpio \
     python3-spidev \
+    python3-vcstool \
+    python3-markdown \
+    libasio-dev \
+    libtinyxml2-dev \
+    libtinyxml-dev \
+    libsqlite3-dev \
+    libyaml-dev \
+    libacl1-dev \
+    libeigen3-dev \
+    liborocos-kdl-dev \
     pigpio \
+    dnsmasq \
     mariadb-server \
     mariadb-client \
-    default-mysql-server \
-    default-mysql-client \
+    libmariadb-dev \
     openvpn \
-    ros-dev-tools || true
+    sudo \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    software-properties-common
 
-  _install_log "Installing ZeroTier (official installer)..."
+  _install_log "Installing ZeroTier (optional VPN)..."
   if curl -fsSL 'https://install.zerotier.com' | sudo bash; then
     if command -v zerotier-cli >/dev/null 2>&1; then
       _install_log "ZeroTier OK: $(zerotier-cli -v 2>/dev/null || zerotier-cli status 2>/dev/null | head -1)"
@@ -81,7 +129,7 @@ install_apt_packages() {
       _install_log "WARN: ZeroTier install finished but zerotier-cli not found"
     fi
   else
-    _install_log "WARN: ZeroTier install failed (VPN via webui will need manual: curl -fsSL https://install.zerotier.com | sudo bash)"
+    _install_log "WARN: ZeroTier install failed (install manually if needed)"
   fi
 
   if command -v raspi-config >/dev/null 2>&1 || [ -f /usr/bin/raspi-config ]; then
@@ -95,14 +143,22 @@ ensure_ros() {
     return 0
   fi
 
+  if [ "${INSTALL_ROS}" = "1" ]; then
+    ros2_install_apt "$ROS_SETUP" || true
+    if [ -f "$ROS_SETUP" ]; then
+      return 0
+    fi
+  fi
+
   local msg
-  msg="ROS 2 Jazzy was not found at:\n  $ROS_SETUP\n\n"
-  msg+="Install ROS 2 Jazzy first (Ubuntu 24.04 / RPi Bookworm):\n"
-  msg+="  https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debians.html\n\n"
-  msg+="Then re-run this installer, or set:\n  ROS_SETUP=/path/to/setup.bash"
+  msg="ROS 2 ${ROS_DISTRO} was not found at:\n  $ROS_SETUP\n\n"
+  msg+="Target: apt codename '${OS_CODENAME}' + ROS 2 ${ROS_DISTRO}\n\n"
+  msg+="Re-run scratch install and pick the correct OS/ROS pair in the dialog,\n"
+  msg+="or set ROS_TARGET=bookworm-jazzy (or OS_CODENAME + ROS_DISTRO).\n\n"
+  msg+="Manual install: https://docs.ros.org/en/${ROS_DISTRO}/Installation.html"
 
   if [ -t 0 ] && command -v whiptail >/dev/null 2>&1; then
-    whiptail --title "ROS 2 required" --msgbox "$msg" 16 72 || true
+    whiptail --title "ROS 2 required" --msgbox "$msg" 18 72 || true
   else
     echo -e "$msg"
   fi
@@ -121,7 +177,7 @@ init_rosdep() {
   rosdep update 2>/dev/null || true
   _install_log "Installing rosdep keys for workspace packages..."
   cd "$WORKSPACE"
-  rosdep install --from-paths src --ignore-src -r -y --rosdistro jazzy 2>/dev/null || \
+  rosdep install --from-paths src --ignore-src -r -y --rosdistro "$ROS_DISTRO" 2>/dev/null || \
     rosdep install --from-paths src --ignore-src -r -y 2>/dev/null || \
     _install_log "rosdep install finished with warnings (continuing)"
 }
@@ -146,6 +202,15 @@ SQL
 }
 
 setup_hardware_groups() {
+  if [ -z "$ENABLE_SPI" ]; then
+    if detect_raspberry_pi; then
+      ENABLE_SPI=1
+      _install_log "Raspberry Pi detected — enabling SPI via raspi-config"
+    else
+      ENABLE_SPI=0
+    fi
+  fi
+
   _install_log "Adding user to dialout, spi, gpio groups..."
   sudo usermod -aG dialout,spi,gpio "$USER" 2>/dev/null || true
 
@@ -155,15 +220,19 @@ setup_hardware_groups() {
   fi
 
   if [ "$START_PIGPIOD" = "1" ]; then
-    _install_log "Enabling pigpiod..."
+    _install_log "Enabling pigpiod (PWM GPIO)..."
     sudo systemctl enable pigpiod 2>/dev/null || true
     sudo systemctl start pigpiod 2>/dev/null || true
   fi
 }
 
 setup_python_venv() {
-  _install_log "Creating Python venv: $VENV_DIR"
-  python3 -m venv --system-site-packages "$VENV_DIR"
+  if [ -d "$VENV_DIR" ]; then
+    _install_log "Using existing Python venv: $VENV_DIR"
+  else
+    _install_log "Creating Python venv: $VENV_DIR"
+    python3 -m venv --system-site-packages "$VENV_DIR"
+  fi
   activate_venv "$VENV_DIR"
   python3 -m pip install --upgrade pip setuptools wheel
   python3 -m pip install -U colcon-common-extensions
@@ -180,7 +249,7 @@ install_pip_requirements() {
     python3 -m pip install -r "$req"
   done < <(find "$WORKSPACE/src" -name requirements.txt -type f 2>/dev/null | sort -u)
 
-  python3 -m pip install spidev pigpio pipyadc matplotlib 2>/dev/null || true
+  python3 -m pip install spidev pigpio pipyadc matplotlib markdown 2>/dev/null || true
 }
 
 set_executable_bits() {
@@ -198,6 +267,7 @@ set_executable_bits() {
   done
   chmod +x "$WORKSPACE/scripts/"*.sh 2>/dev/null || true
   chmod +x "$WORKSPACE/scripts/systemd/"*.sh 2>/dev/null || true
+  chmod +x "$WORKSPACE/scripts/lib/"*.sh 2>/dev/null || true
   chmod +x "$WORKSPACE/src/webui/scripts/install_sudoers.sh" 2>/dev/null || true
 }
 
@@ -237,10 +307,17 @@ verify_installation() {
   python3 -c "import serial; print('  pyserial OK')"
   python3 -c "import psutil; print('  psutil OK')"
   python3 -c "import matplotlib; matplotlib.use('Agg'); print('  matplotlib OK')"
+  python3 -c "import markdown; print('  markdown OK')"
+  command -v dnsmasq >/dev/null 2>&1 && echo "  dnsmasq OK" \
+    || _install_log "WARN: dnsmasq not in PATH (hotspot DHCP will not work)"
+  [ -f /etc/systemd/system/delatometry-hotspot-dnsmasq.service ] && echo "  hotspot-dnsmasq unit OK" \
+    || _install_log "WARN: delatometry-hotspot-dnsmasq.service not installed"
   command -v openvpn >/dev/null 2>&1 && echo "  openvpn OK" \
     || _install_log "WARN: openvpn not in PATH"
   command -v zerotier-cli >/dev/null 2>&1 && echo "  zerotier-cli OK" \
     || _install_log "WARN: zerotier-cli not in PATH (Configuration → VPN → ZeroTier)"
+  [ -f "$ROS_SETUP" ] && echo "  ROS setup OK ($ROS_SETUP)" \
+    || _install_log "WARN: ROS setup missing"
 }
 
 install_systemd_services() {
@@ -250,6 +327,8 @@ install_systemd_services() {
   ENABLE_SERVICES=1 \
   WORKSPACE="$WORKSPACE" \
   ROS_SETUP="$ROS_SETUP" \
+  ROS_DISTRO="$ROS_DISTRO" \
+  OS_CODENAME="$OS_CODENAME" \
   VENV_DIR="$VENV_DIR" \
   DB_NAME="$DB_NAME" \
   DB_USER="$DB_USER" \
@@ -286,18 +365,22 @@ restart_all_services() {
 }
 
 run_scratch_install() {
-  if [ -t 0 ] && command -v whiptail >/dev/null 2>&1; then
-    whiptail --title "Full install" --msgbox \
-      "This will install system packages, MariaDB, Python venv, build all Delatometry nodes, install systemd units, and start services.\n\nWorkspace:\n  $WORKSPACE" \
-      14 70 || exit 0
+  select_ros_target scratch
+
+  if interactive_ui_enabled; then
+    local rc=0
+    whiptail --title "Full one-click install" --msgbox \
+      "This will install:\n  • System packages (MariaDB, pigpio, Python, …)\n  • ROS 2 ${ROS_DISTRO} on apt target ${OS_CODENAME} (if missing)\n  • Python venv + pip requirements\n  • colcon build all Delatometry packages\n  • systemd units + webui sudoers\n  • start services\n\nWorkspace:\n  $WORKSPACE" \
+      20 74 || rc=$?
+    whiptail_handle_cancel "$rc"
   fi
 
   install_apt_packages
+  setup_python_venv
   ensure_ros
   init_rosdep
   setup_mariadb
   setup_hardware_groups
-  setup_python_venv
   install_pip_requirements
   set_executable_bits
   colcon_build_all 1
@@ -307,10 +390,14 @@ run_scratch_install() {
 }
 
 run_rebuild_install() {
-  if [ -t 0 ] && command -v whiptail >/dev/null 2>&1; then
+  select_ros_target rebuild
+
+  if interactive_ui_enabled; then
+    local rc=0
     whiptail --title "Rebuild" --msgbox \
-      "This will rebuild all ROS packages, refresh systemd units, and restart services.\n\nWorkspace:\n  $WORKSPACE" \
-      12 70 || exit 0
+      "ROS target: ${OS_CODENAME} + ROS 2 ${ROS_DISTRO}\n\nRebuild packages, refresh systemd, restart services.\n\nWorkspace:\n  $WORKSPACE" \
+      14 70 || rc=$?
+    whiptail_handle_cancel "$rc"
   fi
 
   ensure_ros
@@ -333,8 +420,11 @@ print_summary() {
   echo " Delatometry install finished ($INSTALL_MODE)"
   echo "=============================================="
   echo " Workspace:  $WORKSPACE"
+  echo " ROS target: ${OS_CODENAME} + ROS 2 ${ROS_DISTRO}"
+  echo " ROS setup:  $ROS_SETUP"
   echo " Config:     /etc/default/delatometry"
   echo " Web UI:     http://$(hostname -I 2>/dev/null | awk '{print $1}')/"
+  echo " Docs:       http://$(hostname -I 2>/dev/null | awk '{print $1}')/docs"
   echo " Status:     $WORKSPACE/scripts/systemd/status.sh"
   echo " Logs:       $WORKSPACE/scripts/systemd/logs.sh all"
   echo
@@ -346,11 +436,11 @@ print_summary() {
 }
 
 main() {
+  ensure_not_root
   _install_log "Workspace: $WORKSPACE"
+  _install_log "INSTALL_ROS=$INSTALL_ROS (ROS target chosen after mode selection)"
+
   if [ -z "$INSTALL_MODE" ]; then
-    if [ ! -t 0 ]; then
-      _install_die "No TTY for interactive menu. Set INSTALL_MODE=scratch or INSTALL_MODE=rebuild"
-    fi
     show_menu
   fi
 
@@ -370,8 +460,8 @@ main() {
 
   print_summary
 
-  if [ -t 0 ] && command -v whiptail >/dev/null 2>&1; then
-    whiptail --title "Done" --msgbox "Install completed successfully.\n\nWeb UI: http://<device-ip>/\n\nUse scripts/systemd/status.sh to check services." 12 60 || true
+  if interactive_ui_enabled; then
+    whiptail --title "Done" --msgbox "Install completed successfully.\n\nWeb UI: http://<device-ip>/\nDocumentation: /docs\n\nUse scripts/systemd/status.sh to check services." 14 64 || true
   fi
 }
 

@@ -32,3 +32,8 @@
 	path = src/webui
 	url = git@github.com:lexvyshnevskyy/DLT_webui.git
 	branch = main
+
+[submodule "src/im3536"]
+	path = src/im3536
+	url = git@github.com:lexvyshnevskyy/DLT_IM3536.git
+	branch = main

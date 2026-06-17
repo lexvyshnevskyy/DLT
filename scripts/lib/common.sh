@@ -47,6 +47,25 @@ activate_venv() {
   fi
 }
 
+# True when whiptail menus/dialogs are usable (local terminal, not SSH automation).
+interactive_ui_enabled() {
+  [ "${INSTALL_NONINTERACTIVE:-0}" = "1" ] && return 1
+  [ -t 0 ] && [ -t 1 ] || return 1
+  case "${TERM:-}" in
+    dumb|unknown|'') return 1 ;;
+  esac
+  command -v whiptail >/dev/null 2>&1
+}
+
+# Exit only when the user pressed Cancel/Esc in whiptail (exit code 1).
+whiptail_handle_cancel() {
+  local rc=$1
+  if [ "$rc" -eq 1 ]; then
+    _install_log "Cancelled by user"
+    exit 0
+  fi
+}
+
 COLCON_PACKAGES=(
   msgs
   database
@@ -54,6 +73,7 @@ COLCON_PACKAGES=(
   ltm2985_uart
   measure_device
   ads1256
+  im3536
   hmi
   webui
 )
