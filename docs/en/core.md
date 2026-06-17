@@ -30,7 +30,7 @@ Helpers: `core/measure_source.py`.
 
 In launch / params:
 
-- `enable_pwm_controller` — pigpio PWM for heater
+- `enable_pwm_controller` — heater PWM (auto backend: **pigpio** on Pi 4, **lgpio** on Pi 5; override with env `DELATOMETRY_PWM_BACKEND`)
 - `enable_database_client` — `/database/query` client
 - `enable_program_scheduler` — `ProgramExperimentManager` (timed modes work without PWM)
 

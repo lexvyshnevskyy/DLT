@@ -20,11 +20,20 @@ Services are installed by `scripts/systemd/install_services.sh` (called from `sc
 
 `/etc/default/delatometry` is sourced by `scripts/systemd/run_node.sh`. Typical variables:
 
-- `DELATOMETRY_WORKSPACE`
-- `DELATOMETRY_VENV`
-- `ROS_DOMAIN_ID`
-- `DELATOMETRY_MEASURE_SOURCE` — `e720` or `im3536` (impedance topic for core/webui)
-- Database credentials
+| Variable | Purpose |
+|----------|---------|
+| `DELATOMETRY_WORKSPACE` | Colcon workspace path |
+| `DELATOMETRY_VENV` | Python venv for nodes |
+| `ROS_DOMAIN_ID` | ROS 2 domain (must match all nodes) |
+| `DELATOMETRY_MEASURE_SOURCE` | `e720` or `im3536` |
+| `DELATOMETRY_RPI_MODEL` | `rpi4` or `rpi5` (set by installer) |
+| `DELATOMETRY_PWM_BACKEND` | `pigpio` (Pi 4) or `lgpio` (Pi 5) |
+| `DELATOMETRY_CORE_ENABLE_PWM_CONTROLLER` | Heater PWM in core |
+| `DELATOMETRY_HMI_PORT` | Nextion UART device (e.g. `/dev/serial0`) |
+| `DELATOMETRY_WEBUI_RUN_CHARTS_DIR` | Persistent PNG charts (`/var/lib/delatometry/run_charts`) |
+| Database credentials | `DELATOMETRY_DB_*` |
+
+The installer creates `/var/lib/delatometry/run_charts` owned by the service user. On Pi 5, `delatometry-ads1256` does not depend on `pigpiod`.
 
 ## Operator commands
 

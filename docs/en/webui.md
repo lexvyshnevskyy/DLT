@@ -19,6 +19,7 @@ Browser-based HMI (`delatometry-webui.service`, default **port 80**). FastAPI + 
 | `/programs` | List, delete, export ZIP |
 | `/program-new` | Wizard (description, experiment mode, steps, E7-20 sweep) |
 | `/program-view?id=N` | Read-only detail and run history |
+| `/program-run?program_id=N&run_id=M` | Run detail, temperature/frequency charts, measurements |
 | `/program-edit?id=N` | Edit meta/steps/mode, start/stop run |
 | `/experiment` | Live LTM + impedance charts, manual heater target |
 | `/configuration` | Network, env, node params, **impedance source**, IM3536 transport |
@@ -53,7 +54,13 @@ Web UI **does not** run a local program scheduler. Starting a program sends `pro
 
 ## Charts on finish
 
-When a run ends (stop or natural finish), webui schedules run charts from DB (`_schedule_run_charts_on_finish`).
+When a run ends, webui generates PNG charts from the database into **`DELATOMETRY_WEBUI_RUN_CHARTS_DIR`** (default `/var/lib/delatometry/run_charts`). Charts survive reboots (unlike old `/tmp` storage).
+
+- Opening a finished run **auto-regenerates** missing charts from DB measurements.
+- **Generate charts** on the run page rebuilds synchronously (no manual browser refresh needed).
+- If charts are still generating after a run stops, the page polls and reloads automatically.
+
+Export ZIP includes chart PNGs when present.
 
 ## Auth
 

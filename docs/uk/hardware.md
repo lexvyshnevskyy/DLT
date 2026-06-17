@@ -22,8 +22,15 @@ LCR-метр: **RS-232**, **USB** (serial) або **LAN** (TCP); SCPI. Той с
 
 ## PWM
 
-Core + pigpio при `enable_pwm_controller:=true`. Ручна ціль з `/experiment/manual` — у core; під програмою блокується.
+Core керує PWM при `enable_pwm_controller:=true`.
+
+| Плата | Backend |
+|-------|---------|
+| Pi 4 і старіші | **pigpio** (`pigpiod`) |
+| Pi 5 | **lgpio** (без pigpiod) |
+
+На Pi 5: `dtoverlay=pwm` у `/boot/firmware/config.txt`. Піни за замовч.: GPIO 18, 19.
 
 ## Дозволи
 
-Користувач служби в групах `gpio`, `dialout` тощо; доступ до `/dev/tty*`.
+Інсталятор: групи `gpio`, `dialout`, `spi`, swap 2 ГБ, UART на GPIO 14/15 для HMI.

@@ -35,6 +35,7 @@ ADD_PI5_PWM_OVERLAY="${ADD_PI5_PWM_OVERLAY:-1}"
 SWAP_SIZE_MB="${SWAP_SIZE_MB:-2048}"
 HMI_UART_REBOOT=0
 DELATOMETRY_HMI_PORT="${DELATOMETRY_HMI_PORT:-}"
+RUN_CHARTS_DIR="${DELATOMETRY_WEBUI_RUN_CHARTS_DIR:-/var/lib/delatometry/run_charts}"
 
 # Non-interactive: INSTALL_MODE=scratch|rebuild
 INSTALL_MODE="${INSTALL_MODE:-}"
@@ -363,6 +364,7 @@ install_apt_packages() {
     libeigen3-dev \
     liborocos-kdl-dev \
     pigpio \
+    dphys-swapfile \
     dnsmasq \
     mariadb-server \
     mariadb-client \
@@ -608,6 +610,7 @@ install_systemd_services() {
   DELATOMETRY_RPI_MODEL="$RPI_MODEL" \
   DELATOMETRY_PWM_BACKEND="$DELATOMETRY_PWM_BACKEND" \
   DELATOMETRY_HMI_PORT="${DELATOMETRY_HMI_PORT:-}" \
+  DELATOMETRY_WEBUI_RUN_CHARTS_DIR="$RUN_CHARTS_DIR" \
     "$WORKSPACE/scripts/systemd/install_services.sh"
 }
 
@@ -735,6 +738,7 @@ print_summary() {
     if [ -n "${DELATOMETRY_HMI_PORT:-}" ]; then
       echo " HMI UART:   ${DELATOMETRY_HMI_PORT}"
     fi
+    echo " Charts:     ${RUN_CHARTS_DIR}"
     if [ "$PI5_PWM_OVERLAY_ADDED" = "1" ] || [ "${HMI_UART_REBOOT:-0}" = "1" ]; then
       echo " Reboot:     recommended after first install (UART / PWM boot config)"
     fi

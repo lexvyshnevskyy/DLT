@@ -24,6 +24,8 @@ ROS-only (no Delatometry stack): `./install.sh` at repo root.
 
 After install: `http://<device-ip>/` · Config: `/etc/default/delatometry`
 
+On **Raspberry Pi**, the installer asks **Pi 4 vs Pi 5**, configures **2 GB swap**, **GPIO UART for HMI**, heater **PWM** (`pigpiod` on Pi 4, `lgpio` on Pi 5), and persistent run charts under `/var/lib/delatometry/run_charts`. Reboot once after the first install if prompted.
+
 ## Documentation
 
 | Language | Repository | Web UI (after `colcon build webui`) |

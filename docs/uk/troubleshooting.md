@@ -39,4 +39,36 @@ pip install markdown>=3.5
 journalctl -u delatometry-webui -f
 ```
 
-Перевірте `/etc/default/delatometry`: шлях workspace, venv, пароль БД, `ROS_DOMAIN_ID`.
+Перевірте `/etc/default/delatometry`: workspace, venv, пароль БД, `ROS_DOMAIN_ID`, модель Pi, PWM, порт HMI, каталог графіків.
+
+## PWM / нагрівач не працює
+
+| Симптом | Pi 4 | Pi 5 |
+|---------|------|------|
+| pigpiod у панелі | `sudo systemctl enable --now pigpiod` | **Не використовуйте pigpiod** |
+| PWM увімкнено, немає виходу | Configuration → Core → PWM, перезапуск core | `python3-lgpio`, `dtoverlay=pwm`, reboot |
+| `backend=lgpio` у логах | — | Норма для Pi 5 |
+
+Переінсталяція моделі: `RPI_MODEL=rpi5 INSTALL_MODE=rebuild bash scripts/install.sh`
+
+## pigpiod на Pi 5
+
+Очікувана помилка. На Pi 5 використовуйте **lgpio**:
+
+```bash
+sudo systemctl disable --now pigpiod
+sudo apt install python3-lgpio
+sudo systemctl restart delatometry-core
+```
+
+## Немає графіків після перезавантаження
+
+Графіки в **`/var/lib/delatometry/run_charts`**. Відкрийте запуск у веб-UI або натисніть **Створити графіки** — дані беруться з БД.
+
+## HMI без даних по UART
+
+```bash
+grep HMI_PORT /etc/default/delatometry
+sudo reboot
+journalctl -u delatometry-hmi -n 30
+```

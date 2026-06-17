@@ -32,8 +32,17 @@ Sensor and actuator nodes feed **core**, which synchronizes streams and runs the
 
 ## PWM / heating
 
-Core optionally uses **pigpio** for PWM when `enable_pwm_controller:=true`. Manual targets from `/experiment/manual` in webui are forwarded to core; blocked during active programs.
+Core drives heater PWM when `enable_pwm_controller:=true` (Web UI **Configuration → Core**).
+
+| Board | Backend | Service / package |
+|-------|---------|-------------------|
+| Raspberry Pi 4 and earlier | **pigpio** | `pigpiod.service` |
+| Raspberry Pi 5 | **lgpio** | `python3-lgpio`; **do not use pigpiod** |
+
+Pi 5 also needs `dtoverlay=pwm` in `/boot/firmware/config.txt` (installer can add it). GPIO **18** and **19** are the default PWM pins.
+
+Manual targets from `/experiment/manual` in webui are forwarded to core; blocked during active programs.
 
 ## Groups and permissions
 
-`scripts/install.sh` may add the service user to `gpio`, `dialout`, etc. UART nodes need read/write on `/dev/tty*`.
+`scripts/install.sh` adds the service user to `gpio`, `dialout`, `spi`, configures **2 GB swap**, and enables **UART on GPIO 14/15** for the Nextion HMI. UART nodes need read/write on `/dev/tty*` (user in group `dialout`).

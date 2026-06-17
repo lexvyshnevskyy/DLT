@@ -18,7 +18,20 @@
 
 ## Середовище
 
-`/etc/default/delatometry` підхоплює `scripts/systemd/run_node.sh`: workspace, venv, `ROS_DOMAIN_ID`, `DELATOMETRY_MEASURE_SOURCE` (`e720` / `im3536`), БД.
+`/etc/default/delatometry` підхоплює `scripts/systemd/run_node.sh`.
+
+| Змінна | Призначення |
+|--------|-------------|
+| `DELATOMETRY_WORKSPACE`, `DELATOMETRY_VENV` | Workspace і venv |
+| `ROS_DOMAIN_ID` | Домен ROS 2 |
+| `DELATOMETRY_MEASURE_SOURCE` | `e720` / `im3536` |
+| `DELATOMETRY_RPI_MODEL` | `rpi4` / `rpi5` |
+| `DELATOMETRY_PWM_BACKEND` | `pigpio` / `lgpio` |
+| `DELATOMETRY_HMI_PORT` | UART для Nextion |
+| `DELATOMETRY_WEBUI_RUN_CHARTS_DIR` | Каталог PNG графіків запусків |
+| `DELATOMETRY_DB_*` | MariaDB |
+
+Інсталятор створює `/var/lib/delatometry/run_charts`. На Pi 5 `delatometry-ads1256` не залежить від `pigpiod`.
 
 ## Команди оператора
 

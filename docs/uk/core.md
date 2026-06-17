@@ -28,7 +28,7 @@
 
 ## Увімкнення функцій
 
-- `enable_pwm_controller` — PWM нагрівача (pigpio)
+- `enable_pwm_controller` — PWM нагрівача (**pigpio** на Pi 4, **lgpio** на Pi 5; `DELATOMETRY_PWM_BACKEND`)
 - `enable_database_client` — клієнт `/database/query`
 - `enable_program_scheduler` — `ProgramExperimentManager` (часові режими без PWM)
 

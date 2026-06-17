@@ -59,4 +59,50 @@ journalctl -u delatometry-webui -f
 
 ## Configuration file
 
-Review `/etc/default/delatometry` for workspace path, venv, DB password, and `ROS_DOMAIN_ID` mismatches between nodes.
+Review `/etc/default/delatometry` for workspace path, venv, DB password, `ROS_DOMAIN_ID`, Pi model (`DELATOMETRY_RPI_MODEL`), PWM backend, HMI UART port, and run charts directory.
+
+## PWM / heater control not working
+
+| Symptom | Pi 4 | Pi 5 |
+|---------|------|------|
+| Dashboard mentions pigpiod | Start: `sudo systemctl enable --now pigpiod` | **Do not use pigpiod** — it fails on Pi 5 |
+| PWM enabled but no output | Enable PWM in **Configuration → Core**, restart `delatometry-core` | Install `python3-lgpio`, add `dtoverlay=pwm` to `/boot/firmware/config.txt`, reboot |
+| Core log `backend=lgpio` | — | Expected on Pi 5 |
+| Core log `bad PWM micros` | — | Update `core` package (lgpio zero-duty fix), rebuild, restart core |
+
+Re-run installer with correct model: `RPI_MODEL=rpi5 INSTALL_MODE=rebuild bash scripts/install.sh`
+
+## pigpiod failed on Raspberry Pi 5
+
+Expected. Stock `pigpiod` does not support Pi 5 (revision `d04170`). Use **`lgpio`** instead:
+
+```bash
+sudo systemctl disable --now pigpiod
+sudo apt install python3-lgpio
+grep PWM /etc/default/delatometry   # enable DELATOMETRY_CORE_ENABLE_PWM_CONTROLLER=true
+sudo systemctl restart delatometry-core
+```
+
+## Program run charts missing after reboot
+
+Charts are stored under **`/var/lib/delatometry/run_charts`** (not `/tmp`). If missing:
+
+1. Ensure env: `DELATOMETRY_WEBUI_RUN_CHARTS_DIR="/var/lib/delatometry/run_charts"`
+2. Re-run `scripts/systemd/install_services.sh` or full install
+3. Open the run in Web UI — charts regenerate from DB automatically, or click **Generate charts**
+
+Rebuild webui after updates: `colcon build --packages-select webui && sudo systemctl restart delatometry-webui`
+
+## HMI / Nextion no serial data
+
+Installer enables UART on **GPIO 14/15** and sets `DELATOMETRY_HMI_PORT`. After install:
+
+```bash
+grep HMI_PORT /etc/default/delatometry
+ls -l /dev/serial0 /dev/ttyAMA*
+groups    # should include dialout
+sudo reboot   # if UART was just enabled
+journalctl -u delatometry-hmi -n 30
+```
+
+If needed, re-apply UART setup: `INSTALL_MODE=rebuild bash scripts/install.sh` on the Pi.
