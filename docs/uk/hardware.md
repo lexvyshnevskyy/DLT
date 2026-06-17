@@ -8,9 +8,13 @@
 - Служба: `delatometry-ltm2985.service`
 - Симулятор: `src/ltm2985_uart/hardware/ltm_nodemcu_simulator/README.md`
 
-## measure_device
+## measure_device (E7-20)
 
-Зовнішні вимірювання; `delatometry-measure-device.service`.
+Імпедансметр по UART; `msgs/E720` на `/e720`. Служба: `delatometry-measure-device.service`. Розгорт частот E7-20 у веб-UI — лише при `DELATOMETRY_MEASURE_SOURCE=e720`.
+
+## im3536 (Hioki IM3536)
+
+LCR-метр: **RS-232**, **USB** (serial) або **LAN** (TCP); SCPI. Той самий контракт `msgs/E720` на `/im3536`. Вибір у **Конфігурації** або `DELATOMETRY_MEASURE_SOURCE=im3536`. Служба: `delatometry-im3536.service`. Деталі: `src/im3536/README.md`.
 
 ## ads1256
 

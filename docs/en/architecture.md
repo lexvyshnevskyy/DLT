@@ -6,7 +6,8 @@
 flowchart LR
   subgraph sensors
     LTM[ltm2985_uart]
-    MD[measure_device]
+    E720[measure_device]
+    IM3536[im3536]
     ADS[ads1256]
   end
   subgraph control
@@ -21,7 +22,8 @@ flowchart LR
     HMI[hmi]
   end
   LTM --> CORE
-  MD --> CORE
+  E720 --> CORE
+  IM3536 --> CORE
   CORE --> DBNODE
   DBNODE --> DB
   WEB --> DBNODE
@@ -42,7 +44,10 @@ flowchart LR
 
 ## Control loop timing
 
-There is **no fixed 1 Hz experiment timer**. Program steps and PI updates run on each **control-channel temperature sample** (LTM today; same measurement topic can be used for ADS later).
+- **`default` mode** — Program steps and PI updates run on each **control-channel temperature sample** (LTM today).
+- **`measure_only` / `measure_ltm`** — Logging and program duration use a **timer** (`measurement_log_interval_sec`); no PI or ramp targets.
+
+Core subscribes to one impedance topic (`/e720` or `/im3536`) based on `measure_source`.
 
 ## ROS namespaces
 
@@ -57,7 +62,7 @@ The webui node subscribes to `/core/experiment/status` and forwards snapshots to
 
 Published status includes fields such as:
 
-- `program` — active program id, step, running flag
+- `program` — active program id, step, running flag, `experiment_mode`
 - `temperature_control` — PI state, manual target, PWM
 - `ltm_summary` — last LTM reading summary for dashboards
 

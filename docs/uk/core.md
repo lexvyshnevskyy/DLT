@@ -2,11 +2,35 @@
 
 Пакет `core` — **єдине джерело правди** для температурних програм, PI-керування та запису вимірювань під час запуску.
 
+## Режими експерименту
+
+У `program_meta` зберігається `experiment_mode` (майстер програми у веб-UI):
+
+| Режим | Керування температурою | LTM у журналі | Тік програми |
+|-------|------------------------|---------------|--------------|
+| `default` | Так (PWM + PI) | Так | Кожен зразок LTM |
+| `measure_only` | Ні | Ні | Таймер (`measurement_log_interval_sec`) |
+| `measure_ltm` | Ні | Так | Таймер |
+
+- **default** — класичний розгін з нагрівом; watchdog LTM увімкнено.
+- **measure_only** / **measure_ltm** — журнал імпедансу за часом; без PWM; планувальник працює без `enable_pwm_controller`.
+
+У JSON статусу: `experiment_mode` у блоці `program`.
+
+## Джерело імпедансу
+
+Параметр `measure_source` у `core.params.yaml` (перевизначається `DELATOMETRY_MEASURE_SOURCE`):
+
+- `e720` — топік `/e720` від `measure_device`
+- `im3536` — топік `/im3536` від `im3536`
+
+Допоміжний модуль: `core/measure_source.py`.
+
 ## Увімкнення функцій
 
 - `enable_pwm_controller` — PWM нагрівача (pigpio)
 - `enable_database_client` — клієнт `/database/query`
-- `enable_program_scheduler` — `ProgramExperimentManager`
+- `enable_program_scheduler` — `ProgramExperimentManager` (часові режими без PWM)
 
 Під час програми ручний PWM блокується відповідно до політики core.
 

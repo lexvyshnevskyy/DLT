@@ -6,7 +6,8 @@
 flowchart LR
   subgraph sensors
     LTM[ltm2985_uart]
-    MD[measure_device]
+    E720[measure_device]
+    IM3536[im3536]
     ADS[ads1256]
   end
   subgraph control
@@ -21,7 +22,8 @@ flowchart LR
     HMI[hmi]
   end
   LTM --> CORE
-  MD --> CORE
+  E720 --> CORE
+  IM3536 --> CORE
   CORE --> DBNODE
   DBNODE --> DB
   WEB --> DBNODE
@@ -41,7 +43,10 @@ flowchart LR
 
 ## Час циклу керування
 
-**Немає фіксованого таймера 1 Гц.** Кроки програми та оновлення PI виконуються на кожному **зразку температури каналу керування** (зараз LTM).
+- **`default`** — кроки програми та PI на кожному **зразку LTM** (канал керування).
+- **`measure_only` / `measure_ltm`** — журнал і тривалість за **таймером** (`measurement_log_interval_sec`); без PI і розгонів.
+
+Core підписується на один топік імпедансу (`/e720` або `/im3536`) залежно від `measure_source`.
 
 ## Простори імен ROS
 
@@ -54,7 +59,7 @@ Core зазвичай з `__ns:=/core`:
 
 ## JSON статусу (концептуально)
 
-- `program` — id, крок, прапорець виконання
+- `program` — id, крок, прапорець виконання, `experiment_mode`
 - `temperature_control` — PI, ручна ціль, PWM
 - `ltm_summary` — короткий зріз LTM для панелей
 

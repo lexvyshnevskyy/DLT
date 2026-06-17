@@ -17,14 +17,25 @@ Browser-based HMI (`delatometry-webui.service`, default **port 80**). FastAPI + 
 | `/` | Redirect → `/dashboard` |
 | `/dashboard` | Host stats, systemd units, disk, UART, network, logs |
 | `/programs` | List, delete, export ZIP |
-| `/program-new` | Wizard (description → steps → E7-20); `?new=1` clears draft |
+| `/program-new` | Wizard (description, experiment mode, steps, E7-20 sweep) |
 | `/program-view?id=N` | Read-only detail and run history |
-| `/program-edit?id=N` | Edit meta/steps, start/stop run |
-| `/experiment` | Live LTM + E7-20 charts, manual heater target |
-| `/configuration` | Network, env, node params, topic peek |
+| `/program-edit?id=N` | Edit meta/steps/mode, start/stop run |
+| `/experiment` | Live LTM + impedance charts, manual heater target |
+| `/configuration` | Network, env, node params, **impedance source**, IM3536 transport |
 | `/docs` | Documentation browser (EN / UK) |
 
 Locale: cookie `delatometry_lang` (`en` / `uk`), `/set-locale/{code}`.
+
+## Program wizard
+
+- **Experiment mode** — `default` (heating + LTM), `measure_only` (impedance vs time), `measure_ltm` (impedance + LTM vs time).
+- **Temperature steps** — required for `default`; for timed modes, duration steps only (no ramp targets applied).
+- **E7-20 sweep** — shown only when impedance source is E7-20 (`DELATOMETRY_MEASURE_SOURCE=e720`).
+
+## Configuration page
+
+- `DELATOMETRY_MEASURE_SOURCE` — `e720` (E7-20) or `im3536` (Hioki IM3536)
+- IM3536: interface (RS-232 / USB / LAN), port, baud rate, LAN host/port, SCPI terminator
 
 ## Live data
 

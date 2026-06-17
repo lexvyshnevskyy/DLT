@@ -8,7 +8,7 @@ MariaDB stores programs, temperature steps, metadata (including E7-20 JSON), **p
 |-------|---------|
 | `programs` | Program header (`ID`, `DateTime`, `Status`) |
 | `program_temp` | Ramp steps: `t_start`, `t_stop`, `minutes` per `program_id` |
-| `program_meta` | Key/value blobs (e.g. description, E7-20 sweep config) |
+| `program_meta` | Key/value blobs (e.g. `description`, `experiment_mode`, E7-20 sweep JSON) |
 | `program_runs` | Each execution: `run_index`, `started_at`, `stopped_at`, `status` |
 | `measurements` | Time series: `elapsed_s`, temps, freqs, channels; optional `run_id` |
 

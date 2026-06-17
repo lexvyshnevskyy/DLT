@@ -8,7 +8,7 @@ MariaDB зберігає програми, кроки температури, м
 |---------|-------------|
 | `programs` | Заголовок програми |
 | `program_temp` | Кроки: `t_start`, `t_stop`, `minutes` |
-| `program_meta` | Пари ключ/значення |
+| `program_meta` | Пари ключ/значення (`description`, `experiment_mode`, JSON E7-20) |
 | `program_runs` | Кожен запуск: індекс, час, статус |
 | `measurements` | Часові ряди, `elapsed_s`, `run_id` |
 

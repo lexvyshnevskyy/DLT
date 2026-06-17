@@ -4,7 +4,7 @@ Delatometry is a **ROS 2 Jazzy** workspace for running temperature-programmed ex
 
 ## What the system does
 
-1. **Programs** — Multi-step temperature ramps (40–1600 K) with optional E7-20 frequency sweeps.
+1. **Programs** — Multi-step temperature ramps (40–1600 K) with optional E7-20 frequency sweeps, or timed impedance-only runs (`measure_only`, `measure_ltm`).
 2. **Core control** — PI heating, program scheduler, and measurement logging run in the `core` node (not in the web UI).
 3. **Persistence** — Programs, steps, runs, and time-series samples live in MariaDB via the `database` node.
 4. **Operator interfaces** — FastAPI web UI (port 80 by default) and `hmi` for RS-232 Nextion panels.
@@ -22,7 +22,8 @@ Delatometry is a **ROS 2 Jazzy** workspace for running temperature-programmed ex
 | `src/database` | MariaDB access, `/database/query` service |
 | `src/hmi` | Nextion display over UART |
 | `src/ltm2985_uart` | LTM2985 temperature / control channel |
-| `src/measure_device` | External measurement hardware |
+| `src/measure_device` | E7-20 impedance meter |
+| `src/im3536` | Hioki IM3536 LCR meter (RS-232 / USB / LAN) |
 | `src/ads1256` | Optional ADC node |
 | `src/msgs` | Custom messages and services |
 | `scripts/install.sh` | Full install and rebuild |

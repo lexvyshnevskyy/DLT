@@ -8,7 +8,8 @@
 |------|------|
 | `delatometry-database.service` | Вузол запитів до MariaDB |
 | `delatometry-ltm2985.service` | Драйвер LTM2985 |
-| `delatometry-measure-device.service` | Зовнішні вимірювання |
+| `delatometry-measure-device.service` | Імпедансметр E7-20 |
+| `delatometry-im3536.service` | LCR-метр Hioki IM3536 |
 | `delatometry-ads1256.service` | Опційний АЦП |
 | `delatometry-core.service` | Експеримент + PI + журнал |
 | `delatometry-hmi.service` | Nextion по RS-232 |
@@ -17,7 +18,7 @@
 
 ## Середовище
 
-`/etc/default/delatometry` підхоплює `scripts/systemd/run_node.sh`: workspace, venv, `ROS_DOMAIN_ID`, БД.
+`/etc/default/delatometry` підхоплює `scripts/systemd/run_node.sh`: workspace, venv, `ROS_DOMAIN_ID`, `DELATOMETRY_MEASURE_SOURCE` (`e720` / `im3536`), БД.
 
 ## Команди оператора
 
@@ -33,8 +34,8 @@ sudo systemctl restart delatometry-core
 
 Для повного функціоналу експериментів:
 
-- `enable_pwm_controller:=true`
+- `enable_pwm_controller:=true` — лише для режиму **`default`**
 - `enable_database_client:=true`
-- `enable_program_scheduler:=true`
+- `enable_program_scheduler:=true` — також для `measure_only` / `measure_ltm` без PWM
 
 Див. `src/core/config/core.params.yaml`.

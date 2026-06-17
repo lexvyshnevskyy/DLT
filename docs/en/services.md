@@ -8,7 +8,8 @@ Services are installed by `scripts/systemd/install_services.sh` (called from `sc
 |------|----------------|
 | `delatometry-database.service` | MariaDB query node |
 | `delatometry-ltm2985.service` | LTM2985 UART driver |
-| `delatometry-measure-device.service` | External measurement interface |
+| `delatometry-measure-device.service` | E7-20 impedance meter |
+| `delatometry-im3536.service` | Hioki IM3536 LCR meter |
 | `delatometry-ads1256.service` | Optional ADC (may be disabled) |
 | `delatometry-core.service` | Experiment + PI + logging |
 | `delatometry-hmi.service` | Nextion RS-232 HMI |
@@ -22,6 +23,7 @@ Services are installed by `scripts/systemd/install_services.sh` (called from `sc
 - `DELATOMETRY_WORKSPACE`
 - `DELATOMETRY_VENV`
 - `ROS_DOMAIN_ID`
+- `DELATOMETRY_MEASURE_SOURCE` — `e720` or `im3536` (impedance topic for core/webui)
 - Database credentials
 
 ## Operator commands
@@ -39,7 +41,7 @@ sudo systemctl restart delatometry-core
 
 # Restart stack after code deploy
 sudo systemctl restart delatometry-database delatometry-ltm2985 \
-  delatometry-measure-device delatometry-core delatometry-webui
+  delatometry-measure-device delatometry-im3536 delatometry-core delatometry-webui
 ```
 
 The **Dashboard** page in the Web UI can start/stop/restart units when passwordless sudo is configured (`src/webui/scripts/install_sudoers.sh`).
@@ -52,8 +54,8 @@ VPN (if enabled) may start before webui. Database and sensor nodes should be up 
 
 Core requires (for full experiment features):
 
-- `enable_pwm_controller:=true`
+- `enable_pwm_controller:=true` — required for **`default`** experiment mode only
 - `enable_database_client:=true`
-- `enable_program_scheduler:=true` (default on when PWM is enabled)
+- `enable_program_scheduler:=true` — also used for timed modes (`measure_only`, `measure_ltm`) without PWM
 
 See `src/core/config/core.params.yaml` for watchdog, topic names, and PI gains.

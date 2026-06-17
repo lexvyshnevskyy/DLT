@@ -9,10 +9,20 @@ Sensor and actuator nodes feed **core**, which synchronizes streams and runs the
 - Service: `delatometry-ltm2985.service`
 - Simulator docs: `src/ltm2985_uart/hardware/ltm_nodemcu_simulator/README.md`
 
-## measure_device
+## measure_device (E7-20)
 
-- External measurement hardware (serial protocol).
+- Serial impedance meter; publishes `msgs/E720` on `/e720`.
+- E7-20 frequency sweep commands from Web UI when `DELATOMETRY_MEASURE_SOURCE=e720`.
 - Service: `delatometry-measure-device.service`
+
+## im3536 (Hioki IM3536)
+
+- LCR meter over **RS-232**, **USB** (serial), or **LAN** (TCP); Hioki SCPI (`:MEASure?`, `:FREQuency?`).
+- Publishes the same `msgs/E720` contract on `/im3536` for core fusion.
+- Topics: `im3536/raw`, `im3536/connected`; offline frame id `im3536_offline`.
+- Select in Web UI **Configuration** or `DELATOMETRY_MEASURE_SOURCE=im3536`.
+- Service: `delatometry-im3536.service`
+- Package docs: `src/im3536/README.md`
 
 ## ads1256
 

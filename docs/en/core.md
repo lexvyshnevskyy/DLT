@@ -2,13 +2,37 @@
 
 The `core` package is the **single source of truth** for running temperature programs, PI control, and measurement inserts during a run.
 
+## Experiment modes
+
+Programs store `experiment_mode` in `program_meta` (set in Web UI program wizard):
+
+| Mode | Temperature control | LTM in logs | Program tick |
+|------|---------------------|-------------|--------------|
+| `default` | Yes (PWM + PI) | Yes | Each LTM control-channel sample |
+| `measure_only` | No | No | Timer (`measurement_log_interval_sec`) |
+| `measure_ltm` | No | Yes | Timer |
+
+- **default** — classic ramp with heating; LTM watchdog active.
+- **measure_only** / **measure_ltm** — impedance logging by duration; no PWM targets; program scheduler runs without `enable_pwm_controller`.
+
+Status JSON includes `experiment_mode` under `program`.
+
+## Impedance meter source
+
+Parameter `measure_source` in `core.params.yaml` (overridden by env `DELATOMETRY_MEASURE_SOURCE`):
+
+- `e720` — subscribe to `/e720` from `measure_device`
+- `im3536` — subscribe to `/im3536` from `im3536`
+
+Helpers: `core/measure_source.py`.
+
 ## Enable features
 
 In launch / params:
 
 - `enable_pwm_controller` — pigpio PWM for heater
 - `enable_database_client` — `/database/query` client
-- `enable_program_scheduler` — `ProgramExperimentManager`
+- `enable_program_scheduler` — `ProgramExperimentManager` (timed modes work without PWM)
 
 Manual PWM and program control are blocked appropriately while a program runs.
 

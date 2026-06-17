@@ -33,6 +33,26 @@ Topics: overview, architecture, installation, systemd services, core, database, 
 
 Open **Documentation** in the site header (locale picks `/docs/en` or `/docs/uk`).
 
+## Impedance meter source
+
+Choose **E7-20** (`measure_device`, `/e720`) or **IM3536** (`im3536`, `/im3536`) in Web UI **Configuration** or in `/etc/default/delatometry`:
+
+```bash
+DELATOMETRY_MEASURE_SOURCE=e720   # or im3536
+```
+
+E7-20 frequency sweeps in the program wizard apply only when the source is `e720`. IM3536 uses Hioki SCPI over RS-232, USB serial, or LAN (`delatometry-im3536.service`).
+
+## Experiment modes
+
+Stored in `program_meta.experiment_mode`:
+
+| Mode | Heating | LTM in logs | Timing |
+|------|---------|-------------|--------|
+| `default` | Yes | Yes | LTM control-channel samples |
+| `measure_only` | No | No | Fixed interval timer |
+| `measure_ltm` | No | Yes | Fixed interval timer |
+
 ## Packages (`src/`)
 
 | Package | Role |
@@ -42,7 +62,8 @@ Open **Documentation** in the site header (locale picks `/docs/en` or `/docs/uk`
 | [database](src/database/) | MariaDB ROS node |
 | [hmi](src/hmi/) | Nextion serial display |
 | [ltm2985_uart](src/ltm2985_uart/) | LTM2985 driver |
-| [measure_device](src/measure_device/) | External measurements |
+| [measure_device](src/measure_device/) | E7-20 impedance meter |
+| [im3536](src/im3536/) | Hioki IM3536 LCR meter (RS-232 / USB / LAN) |
 | [ads1256](src/ads1256/) | Optional ADC |
 | [msgs](src/msgs/) | Interfaces |
 
