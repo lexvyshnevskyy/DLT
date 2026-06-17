@@ -63,6 +63,9 @@ apply_ros_target_profile() {
     custom)
       : "${OS_CODENAME:=$(detect_os_codename)}"
       : "${ROS_DISTRO:=jazzy}"
+      if [ "$OS_CODENAME" = "bookworm" ] && [ "$ROS_DISTRO" = "jazzy" ]; then
+        ROS_INSTALL_SOURCE_FALLBACK=1
+      fi
       ;;
     *)
       _install_die "Unknown ROS target profile: $profile"
@@ -71,7 +74,7 @@ apply_ros_target_profile() {
 
   ROS_TARGET="$profile"
   if [ "$OS_CODENAME" = "bookworm" ] && [ "${ROS_INSTALL_SOURCE_FALLBACK:-0}" = "1" ]; then
-    ROS_SETUP="${ROS_SOURCE_WS:-$HOME/ros2_${ROS_DISTRO}_ws}/install/setup.bash"
+    ROS_SETUP="${ROS_SOURCE_WS:-$HOME/ros2_${ROS_DISTRO}_ros_base_src}/install/setup.bash"
   else
     ROS_SETUP="/opt/ros/${ROS_DISTRO}/setup.bash"
   fi
@@ -116,8 +119,7 @@ show_ros_target_dialog() {
   fi
 
   if [ -n "${OS_CODENAME:-}" ] && [ -n "${ROS_DISTRO:-}" ]; then
-    ROS_SETUP="/opt/ros/${ROS_DISTRO}/setup.bash"
-    ROS_TARGET=custom
+    apply_ros_target_profile custom
     _install_log "Using ROS target from environment: ${OS_CODENAME} + ROS 2 ${ROS_DISTRO}"
     return 0
   fi
@@ -184,8 +186,7 @@ select_ros_target() {
   fi
 
   if [ -n "${OS_CODENAME:-}" ] && [ -n "${ROS_DISTRO:-}" ]; then
-    ROS_SETUP="/opt/ros/${ROS_DISTRO}/setup.bash"
-    ROS_TARGET=custom
+    apply_ros_target_profile custom
     _install_log "ROS target (env): ${OS_CODENAME} + ROS 2 ${ROS_DISTRO}"
     return 0
   fi

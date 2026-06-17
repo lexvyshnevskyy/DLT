@@ -4,21 +4,23 @@ Temperature-programmed experiments on Linux / Raspberry Pi: **core** runs progra
 
 ## One-click install
 
-On **Ubuntu 24.04** (fresh Pi or PC):
+On **Raspberry Pi OS Bookworm** or **Ubuntu 24.04**:
 
 ```bash
 cd ~/ros2_delatometry
 bash scripts/install.sh
 ```
 
-**Full one-click** installs system packages, **ROS 2 Jazzy** (if missing), MariaDB, Python venv, builds all packages, and enables systemd services.
+**Full one-click** installs system packages, **ROS 2 Jazzy** (apt or source build on Pi), MariaDB, Python venv, builds all packages, and enables systemd services. Log: `~/delatometry_install.log`.
 
-Non-interactive:
+Non-interactive (headless Pi, ~30–90 min for ROS source build):
 
 ```bash
-INSTALL_MODE=scratch bash scripts/install.sh
+INSTALL_NONINTERACTIVE=1 INSTALL_MODE=scratch ROS_TARGET=bookworm-jazzy bash scripts/install.sh
 INSTALL_MODE=rebuild bash scripts/install.sh
 ```
+
+ROS-only (no Delatometry stack): `./install.sh` at repo root.
 
 After install: `http://<device-ip>/` · Config: `/etc/default/delatometry`
 

@@ -307,14 +307,16 @@ verify_installation() {
   python3 -c "import serial; print('  pyserial OK')"
   python3 -c "import psutil; print('  psutil OK')"
   python3 -c "import matplotlib; matplotlib.use('Agg'); print('  matplotlib OK')"
+  _install_log "Verifying Python imports and tools..."
   python3 -c "import markdown; print('  markdown OK')"
-  command -v dnsmasq >/dev/null 2>&1 && echo "  dnsmasq OK" \
+  local _path_ext="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+  PATH="$_path_ext:$PATH" command -v dnsmasq >/dev/null 2>&1 && echo "  dnsmasq OK" \
     || _install_log "WARN: dnsmasq not in PATH (hotspot DHCP will not work)"
   [ -f /etc/systemd/system/delatometry-hotspot-dnsmasq.service ] && echo "  hotspot-dnsmasq unit OK" \
     || _install_log "WARN: delatometry-hotspot-dnsmasq.service not installed"
-  command -v openvpn >/dev/null 2>&1 && echo "  openvpn OK" \
+  PATH="$_path_ext:$PATH" command -v openvpn >/dev/null 2>&1 && echo "  openvpn OK" \
     || _install_log "WARN: openvpn not in PATH"
-  command -v zerotier-cli >/dev/null 2>&1 && echo "  zerotier-cli OK" \
+  PATH="$_path_ext:$PATH" command -v zerotier-cli >/dev/null 2>&1 && echo "  zerotier-cli OK" \
     || _install_log "WARN: zerotier-cli not in PATH (Configuration → VPN → ZeroTier)"
   [ -f "$ROS_SETUP" ] && echo "  ROS setup OK ($ROS_SETUP)" \
     || _install_log "WARN: ROS setup missing"
