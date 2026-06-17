@@ -50,6 +50,20 @@ detect_raspberry_pi() {
   return 1
 }
 
+detect_pi5() {
+  local rev=""
+  if [ -r /proc/cpuinfo ]; then
+    rev="$(grep -i '^Revision' /proc/cpuinfo 2>/dev/null | awk -F: '{print $2}' | tr -d ' \t' | tr '[:upper:]' '[:lower:]')"
+  fi
+  case "$rev" in
+    d04*|c04*) return 0 ;;
+  esac
+  if [ -f /proc/device-tree/model ] && grep -qi 'raspberry pi 5' /proc/device-tree/model 2>/dev/null; then
+    return 0
+  fi
+  return 1
+}
+
 ensure_whiptail() {
   if command -v whiptail >/dev/null 2>&1; then
     return 0
@@ -219,8 +233,24 @@ setup_hardware_groups() {
     sudo raspi-config nonint do_spi 0 || true
   fi
 
+  if detect_pi5; then
+    START_PIGPIOD=0
+    _install_log "Raspberry Pi 5 detected — heater PWM uses lgpio (stock pigpiod is unsupported)"
+    sudo apt install -y python3-lgpio 2>/dev/null || true
+    sudo systemctl disable --now pigpiod 2>/dev/null || true
+    local boot_cfg=""
+    for boot_cfg in /boot/firmware/config.txt /boot/config.txt; do
+      if [ -f "$boot_cfg" ] && ! grep -q '^dtoverlay=pwm' "$boot_cfg" 2>/dev/null; then
+        _install_log "Pi 5 PWM: add dtoverlay=pwm to $boot_cfg and reboot if heater PWM fails"
+        break
+      fi
+    done
+  elif detect_raspberry_pi; then
+    sudo apt install -y python3-lgpio 2>/dev/null || true
+  fi
+
   if [ "$START_PIGPIOD" = "1" ]; then
-    _install_log "Enabling pigpiod (PWM GPIO)..."
+    _install_log "Enabling pigpiod (PWM GPIO on Pi 4 and earlier)..."
     sudo systemctl enable pigpiod 2>/dev/null || true
     sudo systemctl start pigpiod 2>/dev/null || true
   fi
@@ -249,7 +279,7 @@ install_pip_requirements() {
     python3 -m pip install -r "$req"
   done < <(find "$WORKSPACE/src" -name requirements.txt -type f 2>/dev/null | sort -u)
 
-  python3 -m pip install spidev pigpio pipyadc matplotlib markdown 2>/dev/null || true
+  python3 -m pip install spidev pigpio pipyadc matplotlib markdown lgpio 2>/dev/null || true
 }
 
 set_executable_bits() {
