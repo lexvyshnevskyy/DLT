@@ -10,7 +10,7 @@ fi
 
 NODE="${1:-}"
 if [ -z "$NODE" ]; then
-  echo "Usage: $0 <database|ltm2985_uart|measure_device|ads1256|core|hmi|webui>"
+  echo "Usage: $0 <database|ltm2985_uart|measure_device|im3536|ads1256|core|hmi|webui>"
   exit 2
 fi
 
@@ -85,6 +85,24 @@ case "$NODE" in
       "speed:=$DELATOMETRY_MEASURE_SPEED"
     ;;
 
+  im3536)
+    : "${DELATOMETRY_IM3536_INTERFACE:=rs232}"
+    : "${DELATOMETRY_IM3536_PORT:=/dev/ttyUSB0}"
+    : "${DELATOMETRY_IM3536_BAUDRATE:=9600}"
+    : "${DELATOMETRY_IM3536_HOST:=192.168.0.100}"
+    : "${DELATOMETRY_IM3536_LAN_PORT:=23}"
+    : "${DELATOMETRY_IM3536_TERMINATOR:=crlf}"
+    params="$DELATOMETRY_WORKSPACE/install/im3536/share/im3536/config/im3536.params.yaml"
+    exec ros2 run im3536 im3536_node --ros-args \
+      --params-file "$params" \
+      -p "interface:=$DELATOMETRY_IM3536_INTERFACE" \
+      -p "port:=$DELATOMETRY_IM3536_PORT" \
+      -p "baudrate:=$DELATOMETRY_IM3536_BAUDRATE" \
+      -p "host:=$DELATOMETRY_IM3536_HOST" \
+      -p "lan_port:=$DELATOMETRY_IM3536_LAN_PORT" \
+      -p "terminator:=$DELATOMETRY_IM3536_TERMINATOR"
+    ;;
+
   ads1256)
     : "${DELATOMETRY_ADS1256_ENABLED:=false}"
     if [ "$(echo "$DELATOMETRY_ADS1256_ENABLED" | tr '[:upper:]' '[:lower:]')" != "true" ]; then
@@ -101,6 +119,14 @@ case "$NODE" in
   core)
     : "${DELATOMETRY_CORE_NAMESPACE:=core}"
     : "${DELATOMETRY_CORE_MEASUREMENT_TOPIC:=/ltm2985/measurement}"
+    : "${DELATOMETRY_MEASURE_SOURCE:=e720}"
+    : "${DELATOMETRY_MEASURE_TOPIC_E720:=/measure_device}"
+    : "${DELATOMETRY_MEASURE_TOPIC_IM3536:=/im3536}"
+    if [ "$(echo "$DELATOMETRY_MEASURE_SOURCE" | tr '[:upper:]' '[:lower:]')" = "im3536" ]; then
+      DELATOMETRY_CORE_MEASURE_TOPIC="$DELATOMETRY_MEASURE_TOPIC_IM3536"
+    else
+      DELATOMETRY_CORE_MEASURE_TOPIC="$DELATOMETRY_MEASURE_TOPIC_E720"
+    fi
     : "${DELATOMETRY_CORE_ENABLE_DATABASE_CLIENT:=true}"
     : "${DELATOMETRY_CORE_ENABLE_PWM_CONTROLLER:=false}"
     : "${DELATOMETRY_CORE_PWM_PIN_CH1:=${DELATOMETRY_CORE_PWM_PIN:-18}}"
@@ -110,6 +136,8 @@ case "$NODE" in
       -r "__ns:=/$DELATOMETRY_CORE_NAMESPACE" \
       --params-file "$params" \
       -p "measurement_topic:=$DELATOMETRY_CORE_MEASUREMENT_TOPIC" \
+      -p "measure_topic:=$DELATOMETRY_CORE_MEASURE_TOPIC" \
+      -p "measure_source:=$DELATOMETRY_MEASURE_SOURCE" \
       -p "enable_database_client:=$DELATOMETRY_CORE_ENABLE_DATABASE_CLIENT" \
       -p "enable_pwm_controller:=$DELATOMETRY_CORE_ENABLE_PWM_CONTROLLER" \
       -p "pwm_pin:=$DELATOMETRY_CORE_PWM_PIN_CH1" \

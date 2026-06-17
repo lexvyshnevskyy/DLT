@@ -7,6 +7,7 @@ if [ "$svc" = "all" ]; then
   journalctl -u delatometry-database.service \
              -u delatometry-ltm2985.service \
              -u delatometry-measure-device.service \
+             -u delatometry-im3536.service \
              -u delatometry-ads1256.service \
              -u delatometry-core.service \
              -u delatometry-hmi.service \

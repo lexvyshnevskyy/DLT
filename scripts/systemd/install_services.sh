@@ -58,6 +58,15 @@ fi
 : "${DELATOMETRY_LTM2985_BAUDRATE:=230400}"
 : "${DELATOMETRY_MEASURE_PORT:=/dev/ttyUSB0}"
 : "${DELATOMETRY_MEASURE_SPEED:=9600}"
+: "${DELATOMETRY_MEASURE_SOURCE:=e720}"
+: "${DELATOMETRY_MEASURE_TOPIC_E720:=/measure_device}"
+: "${DELATOMETRY_MEASURE_TOPIC_IM3536:=/im3536}"
+: "${DELATOMETRY_IM3536_INTERFACE:=rs232}"
+: "${DELATOMETRY_IM3536_PORT:=/dev/ttyUSB0}"
+: "${DELATOMETRY_IM3536_BAUDRATE:=9600}"
+: "${DELATOMETRY_IM3536_HOST:=192.168.0.100}"
+: "${DELATOMETRY_IM3536_LAN_PORT:=23}"
+: "${DELATOMETRY_IM3536_TERMINATOR:=crlf}"
 : "${DELATOMETRY_ADS1256_ENABLED:=false}"
 : "${DELATOMETRY_ADS1256_SIMULATE:=false}"
 : "${DELATOMETRY_ADS1256_FALLBACK_TO_SIMULATION:=true}"
@@ -97,6 +106,17 @@ DELATOMETRY_LTM2985_BAUDRATE="$DELATOMETRY_LTM2985_BAUDRATE"
 # E7-20 / measure_device
 DELATOMETRY_MEASURE_PORT="$DELATOMETRY_MEASURE_PORT"
 DELATOMETRY_MEASURE_SPEED="$DELATOMETRY_MEASURE_SPEED"
+DELATOMETRY_MEASURE_SOURCE="$DELATOMETRY_MEASURE_SOURCE"
+DELATOMETRY_MEASURE_TOPIC_E720="$DELATOMETRY_MEASURE_TOPIC_E720"
+DELATOMETRY_MEASURE_TOPIC_IM3536="$DELATOMETRY_MEASURE_TOPIC_IM3536"
+
+# Hioki IM3536
+DELATOMETRY_IM3536_INTERFACE="$DELATOMETRY_IM3536_INTERFACE"
+DELATOMETRY_IM3536_PORT="$DELATOMETRY_IM3536_PORT"
+DELATOMETRY_IM3536_BAUDRATE="$DELATOMETRY_IM3536_BAUDRATE"
+DELATOMETRY_IM3536_HOST="$DELATOMETRY_IM3536_HOST"
+DELATOMETRY_IM3536_LAN_PORT="$DELATOMETRY_IM3536_LAN_PORT"
+DELATOMETRY_IM3536_TERMINATOR="$DELATOMETRY_IM3536_TERMINATOR"
 
 # ADS1256 (disabled by default — enable in webui Configuration when hardware is present)
 DELATOMETRY_ADS1256_ENABLED="$DELATOMETRY_ADS1256_ENABLED"
@@ -180,6 +200,13 @@ write_unit "delatometry-measure-device" \
   "" \
   ""
 
+write_unit "delatometry-im3536" \
+  "Delatometry Hioki IM3536 ROS 2 node" \
+  "im3536" \
+  "" \
+  "" \
+  ""
+
 write_unit "delatometry-ads1256" \
   "Delatometry ADS1256 ROS 2 node" \
   "ads1256" \
@@ -237,6 +264,7 @@ services=(
   delatometry-database.service
   delatometry-ltm2985.service
   delatometry-measure-device.service
+  delatometry-im3536.service
   delatometry-ads1256.service
   delatometry-core.service
   delatometry-hmi.service
@@ -259,6 +287,25 @@ if [ "$START_SERVICES" = "1" ]; then
         sudo systemctl disable "$svc" 2>/dev/null || true
         sudo systemctl stop "$svc" 2>/dev/null || true
         echo "[services] skipped $svc (DELATOMETRY_ADS1256_ENABLED=false)"
+      fi
+    elif [ "$svc" = "delatometry-measure-device.service" ] || [ "$svc" = "delatometry-im3536.service" ]; then
+      if grep -q '^DELATOMETRY_MEASURE_SOURCE="im3536"' "$ENV_FILE" 2>/dev/null; then
+        if [ "$svc" = "delatometry-im3536.service" ]; then
+          sudo systemctl enable "$svc" 2>/dev/null || true
+          sudo systemctl restart "$svc" || true
+        else
+          sudo systemctl disable "$svc" 2>/dev/null || true
+          sudo systemctl stop "$svc" 2>/dev/null || true
+          echo "[services] skipped $svc (DELATOMETRY_MEASURE_SOURCE=im3536)"
+        fi
+      else
+        if [ "$svc" = "delatometry-measure-device.service" ]; then
+          sudo systemctl restart "$svc" || true
+        else
+          sudo systemctl disable "$svc" 2>/dev/null || true
+          sudo systemctl stop "$svc" 2>/dev/null || true
+          echo "[services] skipped $svc (DELATOMETRY_MEASURE_SOURCE=e720)"
+        fi
       fi
     else
       sudo systemctl restart "$svc" || true
