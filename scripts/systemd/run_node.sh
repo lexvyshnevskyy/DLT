@@ -41,6 +41,16 @@ fi
 source "$DELATOMETRY_WORKSPACE/install/setup.bash"
 set -u
 
+# All Delatometry nodes run on one host. SUBNET discovery across eth0 + the
+# wlan0 hotspot can partition DDS participants so core never sees /im3536
+# (measure columns become zeros while temperature still logs).
+: "${ROS_AUTOMATIC_DISCOVERY_RANGE:=LOCALHOST}"
+export ROS_AUTOMATIC_DISCOVERY_RANGE
+# Prefer the modern discovery knobs; ignore deprecated localhost-only unless set.
+if [ -n "${ROS_LOCALHOST_ONLY:-}" ]; then
+  export ROS_LOCALHOST_ONLY
+fi
+
 cd "$DELATOMETRY_WORKSPACE"
 
 case "$NODE" in
@@ -157,7 +167,11 @@ case "$NODE" in
     ;;
 
   webui)
-    exec ros2 launch webui webui.launch.py
+    : "${DELATOMETRY_MEASURE_SOURCE:=e720}"
+    # Pass source from /etc/default/delatometry so YAML default e720 cannot
+    # override the user's boot selection after restart.
+    exec ros2 launch webui webui.launch.py \
+      "measure_source:=$DELATOMETRY_MEASURE_SOURCE"
     ;;
 
   *)

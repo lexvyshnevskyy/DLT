@@ -100,6 +100,8 @@ fi
 : "${DELATOMETRY_HMI_DATABASE_WAIT_TIMEOUT_SEC:=30.0}"
 : "${DELATOMETRY_RPI_MODEL:=}"
 : "${DELATOMETRY_PWM_BACKEND:=auto}"
+# LOCALHOST keeps on-box nodes on one DDS graph (avoids eth0/wlan0 splits).
+: "${ROS_AUTOMATIC_DISCOVERY_RANGE:=LOCALHOST}"
 
 if [ "$DELATOMETRY_RPI_MODEL" = rpi5 ]; then
   DELATOMETRY_PWM_BACKEND=lgpio
@@ -116,6 +118,9 @@ DELATOMETRY_ROS_SETUP="$DELATOMETRY_ROS_SETUP"
 DELATOMETRY_ROS_DISTRO="$DELATOMETRY_ROS_DISTRO"
 DELATOMETRY_OS_CODENAME="$DELATOMETRY_OS_CODENAME"
 DELATOMETRY_VENV="$DELATOMETRY_VENV"
+
+# ROS 2 discovery (LOCALHOST = all systemd nodes share one local graph)
+ROS_AUTOMATIC_DISCOVERY_RANGE="$ROS_AUTOMATIC_DISCOVERY_RANGE"
 
 # Database
 DELATOMETRY_DB_HOST="$DELATOMETRY_DB_HOST"
@@ -180,9 +185,17 @@ write_unit() {
   local wants="$5"
   local requires="$6"
   local extra_service=""
+  local restart_policy="on-failure"
+  local restart_sec="3"
 
   if [ "$node_name" = "webui" ]; then
     extra_service=$'AmbientCapabilities=CAP_NET_BIND_SERVICE\n'
+  fi
+  # LTM FTDI URB stalls can leave the process alive with no data; the node exits
+  # on repeated stale recoveries — always restart so temperature data resumes.
+  if [ "$node_name" = "ltm2985_uart" ]; then
+    restart_policy="always"
+    restart_sec="2"
   fi
 
   sudo tee "/etc/systemd/system/${service_name}.service" >/dev/null <<EOF
@@ -199,8 +212,8 @@ Group=$RUN_GROUP
 WorkingDirectory=$WORKSPACE
 EnvironmentFile=$ENV_FILE
 ExecStart=$WORKSPACE/scripts/systemd/run_node.sh $node_name
-Restart=on-failure
-RestartSec=3
+Restart=$restart_policy
+RestartSec=$restart_sec
 KillSignal=SIGINT
 TimeoutStopSec=15
 Environment=PYTHONUNBUFFERED=1
@@ -227,16 +240,34 @@ write_unit "delatometry-ltm2985" \
 write_unit "delatometry-measure-device" \
   "Delatometry E7-20 Measure Device ROS 2 node" \
   "measure_device" \
-  "" \
-  "" \
+  "delatometry-measure-source.service" \
+  "delatometry-measure-source.service" \
   ""
 
 write_unit "delatometry-im3536" \
   "Delatometry Hioki IM3536 ROS 2 node" \
   "im3536" \
-  "" \
-  "" \
+  "delatometry-measure-source.service" \
+  "delatometry-measure-source.service" \
   ""
+
+# Oneshot: enable IM3536 or E7-20 for boot from DELATOMETRY_MEASURE_SOURCE.
+cat <<EOF | sudo tee /etc/systemd/system/delatometry-measure-source.service >/dev/null
+[Unit]
+Description=Delatometry measure-source unit sync (IM3536 vs E7-20)
+Before=delatometry-im3536.service delatometry-measure-device.service delatometry-core.service delatometry-webui.service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=$ENV_FILE
+ExecStart=$WORKSPACE/scripts/systemd/sync_measure_source_units.sh
+
+[Install]
+WantedBy=multi-user.target
+EOF
 
 ADS1256_AFTER=""
 ADS1256_WANTS=""
@@ -299,6 +330,7 @@ EOF
 sudo systemctl daemon-reload
 
 services=(
+  delatometry-measure-source.service
   delatometry-database.service
   delatometry-ltm2985.service
   delatometry-measure-device.service
@@ -318,7 +350,7 @@ if [ "$START_SERVICES" = "1" ]; then
   echo "[services] starting services in dependency order"
   for svc in "${services[@]}"; do
     if [ "$svc" = "delatometry-ads1256.service" ]; then
-      if grep -q '^DELATOMETRY_ADS1256_ENABLED="true"' "$ENV_FILE" 2>/dev/null; then
+      if grep -Eq '^DELATOMETRY_ADS1256_ENABLED=["'\'']?true["'\'']?$' "$ENV_FILE" 2>/dev/null; then
         sudo systemctl enable "$svc" 2>/dev/null || true
         sudo systemctl restart "$svc" || true
       else
@@ -327,7 +359,8 @@ if [ "$START_SERVICES" = "1" ]; then
         echo "[services] skipped $svc (DELATOMETRY_ADS1256_ENABLED=false)"
       fi
     elif [ "$svc" = "delatometry-measure-device.service" ] || [ "$svc" = "delatometry-im3536.service" ]; then
-      if grep -q '^DELATOMETRY_MEASURE_SOURCE="im3536"' "$ENV_FILE" 2>/dev/null; then
+      # Accept quoted or unquoted values in /etc/default/delatometry.
+      if grep -Eqi '^DELATOMETRY_MEASURE_SOURCE=["'\'']?im3536["'\'']?$' "$ENV_FILE" 2>/dev/null; then
         if [ "$svc" = "delatometry-im3536.service" ]; then
           sudo systemctl enable "$svc" 2>/dev/null || true
           sudo systemctl restart "$svc" || true
@@ -338,6 +371,7 @@ if [ "$START_SERVICES" = "1" ]; then
         fi
       else
         if [ "$svc" = "delatometry-measure-device.service" ]; then
+          sudo systemctl enable "$svc" 2>/dev/null || true
           sudo systemctl restart "$svc" || true
         else
           sudo systemctl disable "$svc" 2>/dev/null || true
