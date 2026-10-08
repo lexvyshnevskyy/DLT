@@ -327,6 +327,17 @@ ExecStop=/bin/bash -c '/usr/bin/pkill -f openvpn.*client.ovpn 2>/dev/null || tru
 WantedBy=multi-user.target
 EOF
 
+# The nodes run as $RUN_USER and talk over DDS shared memory in /dev/shm.
+# By default logind deletes a user's shared memory when that user's last
+# login (SSH, desktop) ends, which silently cuts every node off from the
+# others mid-experiment. Keep it, and keep the user manager alive.
+sudo install -d -m 0755 /etc/systemd/logind.conf.d
+sudo tee /etc/systemd/logind.conf.d/delatometry.conf >/dev/null <<EOF
+[Login]
+RemoveIPC=no
+EOF
+sudo loginctl enable-linger "$RUN_USER" || true
+
 sudo systemctl daemon-reload
 
 services=(
